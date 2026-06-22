@@ -1054,10 +1054,11 @@ function renderActions() {
   
   // Player action phases
   if (['preflop', 'flop', 'turn', 'river'].includes(state.phase)) {
-    // If player already made their play bet, auto-advance (no more decisions)
+    // If player already made their play bet, show a Next button to continue
     if (state.hasPlayed) {
-      // Auto-advance after a brief delay for visual feedback
-      setTimeout(() => advancePhase(), 300);
+      nextBtn.style.display = '';
+      nextBtn.textContent = '➡️ Continue';
+      nextBtn.onclick = () => { nextBtn.style.display = 'none'; advancePhase(); };
       return;
     }
     checkBtn.style.display = '';
