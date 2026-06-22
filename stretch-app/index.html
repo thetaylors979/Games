@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Stretch Routine</title>
+    <style>
+        :root {
+            --bg: #0f0f11;
+            --card-bg: #1a1a1f;
+            --card-border: #2a2a30;
+            --text: #e8e8ec;
+            --text-dim: #8a8a94;
+            --accent: #22c55e;
+            --accent-glow: rgba(34, 197, 94, 0.15);
+            --rest-color: #f59e0b;
+            --warn-color: #ef4444;
+            --hold-color: #22c55e;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh; min-height: 100dvh;
+            display: flex; flex-direction: column; align-items: center;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden; overflow-y: auto;
+            user-select: none; -webkit-user-select: none;
+        }
+        .header { width: 100%; text-align: center; padding: 12px 16px 4px; }
+        .header h1 { font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-dim); }
+        .progress-container { width: 100%; max-width: 480px; padding: 0 16px; margin-bottom: 4px; }
+        .progress-bar-bg { width: 100%; height: 4px; background: var(--card-border); border-radius: 2px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; width: 0%; }
+        .main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; width: 100%; max-width: 480px; padding: 0 24px; }
+        .stretch-photo {
+            width: 100%;
+            max-width: 260px;
+            height: 174px;
+            object-fit: contain;
+            object-position: left center;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            background: var(--card-bg);
+        }
+        .stretch-name { font-size: 1.4rem; font-weight: 700; text-align: center; margin-bottom: 2px; min-height: 1.8rem; line-height: 1.2; }
+        .stretch-phase { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; min-height: 1rem; }
+        .stretch-phase.hold { color: var(--hold-color); }
+        .stretch-phase.rest { color: var(--rest-color); }
+        .stretch-phase.get-ready { color: var(--warn-color); }
+        .timer-display { font-size: 6rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; line-height: 1; margin-bottom: 4px; transition: color 0.3s ease; }
+        .timer-display.hold { color: var(--hold-color); }
+        .timer-display.rest { color: var(--rest-color); }
+        .timer-display.get-ready { color: var(--warn-color); }
+        .timer-label { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 16px; }
+        .stretch-counter { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 20px; }
+        .btn-row { display: flex; gap: 12px; margin-bottom: 12px; }
+        .btn { padding: 14px 36px; font-size: 1rem; font-weight: 700; border: none; border-radius: 14px; cursor: pointer; transition: transform 0.1s ease, opacity 0.2s ease; -webkit-tap-highlight-color: transparent; }
+        .btn:active { transform: scale(0.95); }
+        .btn-start { background: var(--accent); color: #000; }
+        .btn-pause { background: var(--rest-color); color: #000; }
+        .btn-resume { background: var(--accent); color: #000; }
+        .btn-skip { background: var(--card-bg); border: 2px solid var(--card-border); color: var(--text); padding: 14px 24px; font-size: 0.9rem; font-weight: 600; }
+        .btn-stop { background: transparent; border: 2px solid var(--card-border); color: var(--text-dim); padding: 14px 36px; font-size: 1rem; font-weight: 700; }
+        .btn-launcher { background: transparent; border: 2px solid var(--card-border); color: var(--text-dim); padding: 10px 24px; font-size: 0.85rem; font-weight: 600; border-radius: 10px; cursor: pointer; text-decoration: none; display: inline-block; transition: transform 0.1s ease, border-color 0.15s ease; }
+        .btn-launcher:active { transform: scale(0.95); border-color: var(--accent); }
+        .start-screen { text-align: center; padding: 16px 0 24px; }
+        .start-screen .title { font-size: 1.6rem; font-weight: 800; margin-bottom: 4px; }
+        .start-screen .subtitle { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 12px; line-height: 1.4; }
+        .stretch-list { text-align: left; max-width: 340px; margin: 0 auto 16px; }
+        .stretch-list-item { font-size: 0.8rem; padding: 4px 0; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; gap: 8px; }
+        .stretch-list-item .num { color: var(--text-dim); width: 20px; text-align: right; flex-shrink: 0; }
+        .stretch-list-item .name { flex: 1; }
+        .stretch-list-item .dur { color: var(--text-dim); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+        .stretch-list-item .target { color: var(--text-dim); font-size: 0.7rem; }
+        .complete-screen { text-align: center; }
+        .complete-screen .emoji { font-size: 4rem; margin-bottom: 16px; }
+        .complete-screen .title { font-size: 2rem; font-weight: 800; color: var(--accent); margin-bottom: 8px; }
+        .complete-screen .subtitle { font-size: 0.9rem; color: var(--text-dim); margin-bottom: 32px; }
+        .complete-screen .stats { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 24px; line-height: 1.8; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="startScreen" class="start-screen main">
+    <div class="title">🧘 Full Body Stretch</div>
+    <div class="subtitle">
+        14 stretches · ~30 min<br>
+        Hold 1 min → Rest 15s → Hold 45s
+    </div>
+    <div class="stretch-list" id="stretchList"></div>
+    <button class="btn btn-start" id="startBtn">Start Routine</button>
+    <div style="margin-top:16px"><a class="btn-launcher" href="/">🏠 Back to Launcher</a></div>
+</div>
+
+<div id="timerScreen" class="main hidden">
+    <div class="header"><h1>Full Body Stretch</h1></div>
+    <div class="progress-container"><div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar"></div></div></div>
+    <img class="stretch-photo" id="stretchPhoto" src="images/cat-cow.jpg" alt="Stretch pose">
+    <div class="stretch-name" id="stretchName">—</div>
+    <div class="stretch-phase" id="stretchPhase">GET READY</div>
+    <div class="timer-display get-ready" id="timerDisplay">5</div>
+    <div class="timer-label" id="timerLabel">seconds</div>
+    <div class="stretch-counter" id="stretchCounter">—</div>
+    <div class="btn-row">
+        <button class="btn btn-pause hidden" id="pauseBtn">Pause</button>
+        <button class="btn btn-resume hidden" id="resumeBtn">Resume</button>
+        <button class="btn btn-skip" id="backBtn">⏮ Back</button>
+        <button class="btn btn-skip" id="skipBtn">Skip ⏭</button>
+    </div>
+    <button class="btn btn-stop" id="stopBtn">Stop</button>
+    <div style="margin-top:12px"><a class="btn-launcher" href="/">🏠 Back to Launcher</a></div>
+</div>
+
+<div id="completeScreen" class="complete-screen main hidden">
+    <div class="emoji">🎉</div>
+    <div class="title">Routine Complete!</div>
+    <div class="subtitle">Great job showing up for yourself today.</div>
+    <div class="stats" id="completeStats"></div>
+    <button class="btn btn-start" id="restartBtn">Start Again</button>
+    <div style="margin-top:16px"><a class="btn-launcher" href="/">🏠 Back to Launcher</a></div>
+</div>
+
+<script>
+// 14 stretches — no body-part duplicates, optimal flow order
+// Timing: 1 min hold → 15s rest → 45s hold per stretch
+// Bilateral stretches (L/R) are separate timed entries
+const STRETCHES = [
+    // SPINE WARM-UP — wake up the spine first
+    { name: "Cat-Cow", img: 'images/cat-cow.jpg', target: 'Spine warm-up' },
+    { name: "Child's Pose", img: 'images/childs-pose.jpg', target: 'Spine & shoulders' },
+    // BACKBEND + COUNTERPOSE — gentle backbend then twist to balance
+    { name: "Sphinx Pose", img: 'images/sphinx.jpg', target: 'Lower back' },
+    { name: "Spinal Twist — Left Side", img: 'images/spinal-twist-l.jpg', target: 'Spine rotation' },
+    { name: "Spinal Twist — Right Side", img: 'images/spinal-twist-r.jpg', target: 'Spine rotation' },
+    // POSTERIOR CHAIN — hamstrings & calves now warm from twists
+    { name: "Downward Dog", img: 'images/downward-dog.jpg', target: 'Hamstrings & calves' },
+    // HIP OPENERS — progress from standing to deep
+    { name: "Low Lunge — Left Side", img: 'images/low-lunge-l.jpg', target: 'Hip flexors' },
+    { name: "Low Lunge — Right Side", img: 'images/low-lunge-r.jpg', target: 'Hip flexors' },
+    { name: "Pigeon Pose — Left Side", img: 'images/pigeon-l.jpg', target: 'Glutes & deep hips' },
+    { name: "Pigeon Pose — Right Side", img: 'images/pigeon-r.jpg', target: 'Glutes & deep hips' },
+    // DEEPER HAMSTRINGS + INNER THIGHS — hips fully open now
+    { name: "Forward Fold", img: 'images/forward-fold.jpg', target: 'Hamstrings' },
+    { name: "Butterfly Stretch", img: 'images/butterfly.jpg', target: 'Inner thighs' },
+    // NECK — targeted work for nerve issue area
+    { name: "Neck Stretches", img: 'images/neck-stretches.jpg', target: 'Neck (both sides)' },
+    // COOL-DOWN — gentle release
+    { name: "Happy Baby", img: 'images/happy-baby.jpg', target: 'Hips & low back' },
+];
+
+const HOLD_1 = 60, REST = 15, HOLD_2 = 45, GET_READY = 5;
+const COUNTDOWN_TIMES = [30, 10, 3, 2, 1];
+
+const totalStretches = STRETCHES.length;
+const PER_STRETCH = GET_READY + HOLD_1 + REST + HOLD_2;
+const TOTAL_ROUTINE_SECONDS = totalStretches * PER_STRETCH;
+
+let audioCtx = null;
+function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playBeep(freq, dur, type='sine', vol=0.3) {
+    if (!audioCtx) return;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime + dur);
+}
+function playCountdownBeep(n) {
+    if (n===1) playBeep(880,0.4,'square',0.25);
+    else if (n===2) playBeep(660,0.3,'square',0.2);
+    else if (n===3) playBeep(550,0.25,'square',0.2);
+    else if (n===30) playBeep(440,0.2,'sine',0.15);
+    else if (n===10) playBeep(440,0.25,'triangle',0.2);
+}
+function playPhaseChange() { playBeep(523,0.15,'sine',0.2); setTimeout(()=>playBeep(659,0.15,'sine',0.2),150); }
+function playStretchStart() { playBeep(440,0.15,'sine',0.25); setTimeout(()=>playBeep(554,0.15,'sine',0.25),150); setTimeout(()=>playBeep(659,0.2,'sine',0.3),300); }
+function playComplete() { [523,659,784,1047].forEach((n,i)=>setTimeout(()=>playBeep(n,0.3,'sine',0.2),i*200)); }
+
+function speak(text) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 1.1; u.volume = 0.8;
+        window.speechSynthesis.speak(u);
+    }
+}
+
+function buildStretchList() {
+    const list = document.getElementById('stretchList');
+    STRETCHES.forEach((s, idx) => {
+        const div = document.createElement('div');
+        div.className = 'stretch-list-item';
+        div.innerHTML = `<span class="num">${idx + 1}.</span><span class="name">${s.name}</span><span class="target">${s.target}</span><span class="dur">2:00</span>`;
+        list.appendChild(div);
+    });
+}
+
+let state = 'idle', currentStretchIdx = 0, currentPhase = '', phaseTimeRemaining = 0, totalTimer = null, startTime = 0;
+const $ = id => document.getElementById(id);
+
+function updateUI() {
+    const timer = $('timerDisplay'), name = $('stretchName'), phase = $('stretchPhase'),
+          counter = $('stretchCounter'), progressBar = $('progressBar'), photo = $('stretchPhoto');
+    if (state === 'idle') return;
+
+    let elapsed = 0;
+    for (let i = 0; i < currentStretchIdx; i++) elapsed += PER_STRETCH;
+    elapsed += (getPhaseLength() - phaseTimeRemaining);
+    progressBar.style.width = Math.min((elapsed / TOTAL_ROUTINE_SECONDS) * 100, 100) + '%';
+
+    if (currentStretchIdx < totalStretches) {
+        name.textContent = STRETCHES[currentStretchIdx].name;
+        photo.src = STRETCHES[currentStretchIdx].img;
+    }
+
+    if (currentPhase === 'get-ready') {
+        phase.textContent = 'GET READY'; phase.className = 'stretch-phase get-ready';
+        timer.className = 'timer-display get-ready'; $('timerLabel').textContent = 'seconds';
+    } else if (currentPhase === 'hold-1' || currentPhase === 'hold-2') {
+        phase.textContent = 'HOLD'; phase.className = 'stretch-phase hold';
+        timer.className = 'timer-display hold'; $('timerLabel').textContent = 'remaining';
+    } else if (currentPhase === 'rest') {
+        phase.textContent = 'REST'; phase.className = 'stretch-phase rest';
+        timer.className = 'timer-display rest'; $('timerLabel').textContent = 'seconds';
+    }
+    timer.textContent = phaseTimeRemaining;
+    counter.textContent = `Stretch ${currentStretchIdx + 1} of ${totalStretches}`;
+}
+
+function getPhaseLength() {
+    if (currentPhase === 'get-ready') return GET_READY;
+    if (currentPhase === 'hold-1') return HOLD_1;
+    if (currentPhase === 'rest') return REST;
+    if (currentPhase === 'hold-2') return HOLD_2;
+    return 0;
+}
+
+function nextPhase() {
+    if (currentPhase === 'get-ready') {
+        currentPhase = 'hold-1'; phaseTimeRemaining = HOLD_1;
+        playStretchStart(); speak('Hold');
+    } else if (currentPhase === 'hold-1') {
+        currentPhase = 'rest'; phaseTimeRemaining = REST;
+        playPhaseChange(); speak('Rest');
+    } else if (currentPhase === 'rest') {
+        currentPhase = 'hold-2'; phaseTimeRemaining = HOLD_2;
+        playStretchStart(); speak('Hold');
+    } else if (currentPhase === 'hold-2') {
+        currentStretchIdx++;
+        if (currentStretchIdx >= totalStretches) { finishRoutine(); return; }
+        currentPhase = 'get-ready'; phaseTimeRemaining = GET_READY;
+        playPhaseChange(); speak('Next. ' + STRETCHES[currentStretchIdx].name);
+    }
+    updateUI();
+}
+
+function tick() {
+    if (state !== 'running') return;
+    if (COUNTDOWN_TIMES.includes(phaseTimeRemaining) && phaseTimeRemaining > 0) {
+        playCountdownBeep(phaseTimeRemaining);
+        if (phaseTimeRemaining <= 10) speak(String(phaseTimeRemaining));
+        else if (phaseTimeRemaining === 30) speak('Thirty');
+    }
+    phaseTimeRemaining--;
+    if (phaseTimeRemaining < 0) { nextPhase(); return; }
+    updateUI();
+}
+
+function startRoutine() {
+    initAudio(); state = 'running'; currentStretchIdx = 0;
+    currentPhase = 'get-ready'; phaseTimeRemaining = GET_READY;
+    startTime = Date.now();
+    $('startScreen').classList.add('hidden');
+    $('timerScreen').classList.remove('hidden');
+    $('completeScreen').classList.add('hidden');
+    $('pauseBtn').classList.remove('hidden');
+    $('resumeBtn').classList.add('hidden');
+    $('skipBtn').classList.remove('hidden');
+    $('stopBtn').classList.remove('hidden');
+    playPhaseChange(); speak(STRETCHES[0].name + '. Get ready.');
+    updateUI(); totalTimer = setInterval(tick, 1000);
+}
+
+function pauseRoutine() {
+    if (state !== 'running') return; state = 'paused'; clearInterval(totalTimer);
+    $('pauseBtn').classList.add('hidden'); $('resumeBtn').classList.remove('hidden');
+    window.speechSynthesis.cancel();
+}
+
+function resumeRoutine() {
+    if (state !== 'paused') return; state = 'running';
+    $('pauseBtn').classList.remove('hidden'); $('resumeBtn').classList.add('hidden');
+    totalTimer = setInterval(tick, 1000);
+}
+
+function backStretch() {
+    if (state !== 'running' && state !== 'paused') return;
+    window.speechSynthesis.cancel();
+    if (currentStretchIdx === 0) return; // already at first stretch
+    currentStretchIdx--;
+    if (state === 'paused') {
+        state = 'running';
+        $('pauseBtn').classList.remove('hidden'); $('resumeBtn').classList.add('hidden');
+        totalTimer = setInterval(tick, 1000);
+    }
+    currentPhase = 'get-ready'; phaseTimeRemaining = GET_READY;
+    playPhaseChange(); speak(STRETCHES[currentStretchIdx].name + '. Get ready.');
+    updateUI();
+}
+
+function skipStretch() {
+    if (state !== 'running' && state !== 'paused') return;
+    window.speechSynthesis.cancel();
+    currentStretchIdx++;
+    if (currentStretchIdx >= totalStretches) { finishRoutine(); return; }
+    if (state === 'paused') {
+        state = 'running';
+        $('pauseBtn').classList.remove('hidden'); $('resumeBtn').classList.add('hidden');
+        totalTimer = setInterval(tick, 1000);
+    }
+    currentPhase = 'get-ready'; phaseTimeRemaining = GET_READY;
+    playPhaseChange(); speak(STRETCHES[currentStretchIdx].name + '. Get ready.');
+    updateUI();
+}
+
+function stopRoutine() {
+    state = 'idle'; clearInterval(totalTimer); window.speechSynthesis.cancel();
+    $('startScreen').classList.remove('hidden');
+    $('timerScreen').classList.add('hidden');
+    $('completeScreen').classList.add('hidden');
+}
+
+function finishRoutine() {
+    state = 'idle'; clearInterval(totalTimer); window.speechSynthesis.cancel();
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    const mins = Math.floor(elapsed / 60), secs = elapsed % 60;
+    $('timerScreen').classList.add('hidden');
+    $('completeScreen').classList.remove('hidden');
+    $('completeStats').innerHTML = `${totalStretches} stretches completed<br>${mins}:${secs.toString().padStart(2,'0')} total time`;
+    playComplete(); speak('Routine complete! Great job!');
+}
+
+$('startBtn').addEventListener('click', startRoutine);
+$('pauseBtn').addEventListener('click', pauseRoutine);
+$('resumeBtn').addEventListener('click', resumeRoutine);
+$('backBtn').addEventListener('click', backStretch);
+$('skipBtn').addEventListener('click', skipStretch);
+$('stopBtn').addEventListener('click', stopRoutine);
+$('restartBtn').addEventListener('click', startRoutine);
+document.addEventListener('click', () => initAudio(), { once: true });
+
+buildStretchList();
+</script>
+</body>
+</html>
