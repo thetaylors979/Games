@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Texas Hold'em Trainer</title>
+<style>
+:root {
+  --bg: #0a3d1f;
+  --felt: #0d4a28;
+  --felt-dark: #083018;
+  --gold: #d4a843;
+  --gold-light: #f0d078;
+  --text: #f0e6d2;
+  --text-dim: #b8a88a;
+  --card-bg: #fafafa;
+  --card-red: #c0392b;
+  --card-black: #1a1a1a;
+  --correct: #27ae60;
+  --wrong: #e74c3c;
+  --btn-bg: #1a3a2a;
+  --btn-hover: #2a5a3a;
+  --chip-bg: #2c1810;
+  --panel-bg: rgba(0,0,0,0.4);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { height: 100%; height: 100dvh; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.03) 0%, transparent 70%),
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Header ── */
+.header {
+  width: 100%;
+  max-width: 500px;
+  padding: 6px 12px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+.header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--gold-light);
+}
+.header .stats {
+  display: flex;
+  gap: 10px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+.header .stats span { display:flex; align-items:center; gap:3px; }
+.header .stats .val { color: var(--text); font-weight:600; }
+
+/* ── Dealer Area ── */
+.dealer-area {
+  width: 100%;
+  max-width: 500px;
+  padding: 2px 12px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+.dealer-label {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+.dealer-cards {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  min-height: 70px;
+  align-items: center;
+}
+.dealer-hand-name {
+  font-size: 0.75rem;
+  color: var(--gold-light);
+  margin-top: 2px;
+  font-weight: 600;
+  min-height: 18px;
+}
+
+/* ── Community Cards ── */
+.community-area {
+  width: 100%;
+  max-width: 500px;
+  padding: 2px 12px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+.community-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+.community-cards {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  min-height: 60px;
+  align-items: center;
+}
+.community-placeholder {
+  width: 50px;
+  height: 72px;
+  border: 2px dashed rgba(255,255,255,0.12);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.1);
+  font-size: 0.7rem;
+}
+
+/* ── Message Area ── */
+.message-area {
+  width: 100%;
+  max-width: 500px;
+  padding: 2px 12px;
+  text-align: center;
+  min-height: 24px;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+.message {
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+  display: inline-block;
+  transition: all 0.2s;
+}
+.message.info { background: rgba(212,168,67,0.2); color: var(--gold-light); }
+.message.result { background: rgba(255,255,255,0.1); color: var(--text); }
+.message.win { background: rgba(39,174,96,0.3); color: #5dfc8e; }
+.message.lose { background: rgba(231,76,60,0.3); color: #ff8a80; }
+
+/* ── Player Area ── */
+.player-area {
+  width: 100%;
+  max-width: 500px;
+  padding: 2px 12px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+.player-label {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+.player-cards {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  min-height: 70px;
+  align-items: center;
+}
+.player-hand-name {
+  font-size: 0.75rem;
+  color: var(--text);
+  margin-top: 2px;
+  font-weight: 600;
+  min-height: 18px;
+}
+
+/* ── Cards ── */
+.card {
+  width: 60px;
+  height: 88px;
+  background: var(--card-bg);
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  position: relative;
+  font-weight: 700;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  animation: dealIn 0.3s ease;
+}
+@keyframes dealIn {
+  from { transform: translateY(-20px); opacity:0; }
+  to { transform: translateY(0); opacity:1; }
+}
+.card.red { color: var(--card-red); }
+.card.black { color: var(--card-black); }
+.card .rank {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.card .suit {
+  font-size: 1.15rem;
+  line-height: 1;
+  margin-top: 1px;
+}
+.card .corner-rank {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  font-size: 0.5rem;
+  line-height: 1;
+}
+.card .corner-suit {
+  position: absolute;
+  top: 12px;
+  left: 5px;
+  font-size: 0.45rem;
+  line-height: 1;
+}
+.card.face-down {
+  background: linear-gradient(135deg, #1a3a6a, #0d2240);
+  color: transparent;
+}
+.card.face-down::after {
+  content: '🂠';
+  font-size: 1.5rem;
+  color: rgba(255,255,255,0.3);
+}
+.card.small {
+  width: 50px;
+  height: 72px;
+}
+.card.small .rank { font-size: 0.8rem; }
+.card.small .suit { font-size: 1rem; }
+
+/* ── Action Buttons ── */
+.actions {
+  width: 100%;
+  max-width: 500px;
+  padding: 4px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+.action-btn {
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.15);
+  background: var(--btn-bg);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 70px;
+  min-height: 44px;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.action-btn:active {
+  transform: scale(0.95);
+  background: var(--btn-hover);
+  border-color: var(--gold);
+}
+.action-btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+.action-btn.primary {
+  background: var(--gold);
+  color: #1a1a1a;
+  border-color: var(--gold);
+}
+.action-btn.primary:active {
+  background: var(--gold-light);
+}
+.action-btn.danger {
+  border-color: rgba(231,76,60,0.5);
+  color: #e74c3c;
+}
+
+/* ── Betting Area ── */
+.bet-area {
+  width: 100%;
+  max-width: 500px;
+  padding: 2px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.bet-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+.bet-row .bet-val {
+  color: var(--gold-light);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.bankroll {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+/* ── Pot Display ── */
+.pot-display {
+  width: 100%;
+  max-width: 500px;
+  padding: 2px 12px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--gold-light);
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+/* ── Strategy Hint ── */
+.strategy-hint {
+  width: 100%;
+  max-width: 500px;
+  padding: 2px 12px;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  position: relative;
+  z-index: 1;
+  min-height: 16px;
+  flex-shrink: 0;
+}
+
+/* ── Spacer ── */
+.spacer {
+  flex: 1;
+  min-height: 2px;
+  position: relative;
+  z-index: 0;
+}
+
+/* ── Settings Panel ── */
+.settings-toggle {
+  position: fixed;
+  top: calc(48px + var(--safe-top));
+  right: 12px;
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--panel-bg);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.settings-panel {
+  position: fixed;
+  top: 0; right: 0;
+  width: 280px;
+  max-width: 90vw;
+  height: 100%;
+  height: 100dvh;
+  background: #0a1a10;
+  z-index: 20;
+  padding: 20px;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  overflow-y: auto;
+  border-left: 1px solid rgba(255,255,255,0.1);
+}
+.settings-panel.open { transform: translateX(0); }
+.settings-panel h3 {
+  font-size: 1rem;
+  color: var(--gold-light);
+  margin-bottom: 16px;
+}
+.settings-panel label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  margin-top: 12px;
+}
+.settings-panel select, .settings-panel input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: var(--btn-bg);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.settings-panel .close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 15;
+  display: none;
+}
+.overlay.show { display: block; }
+
+/* ── Responsive ── */
+@media (max-width: 380px) {
+  .card { width: 52px; height: 76px; }
+  .card .rank { font-size: 0.8rem; }
+  .card .suit { font-size: 1rem; }
+  .card.small { width: 44px; height: 64px; }
+  .card.small .rank { font-size: 0.7rem; }
+  .card.small .suit { font-size: 0.9rem; }
+  .action-btn { padding: 10px 12px; font-size: 0.75rem; min-width: 60px; min-height: 40px; }
+  .header h1 { font-size: 1.1rem; }
+  .header .stats { gap: 6px; font-size: 0.65rem; }
+  .community-placeholder { width: 42px; height: 62px; }
+}
+@media (min-width: 390px) {
+  .card { width: 64px; height: 94px; }
+  .card .rank { font-size: 0.95rem; }
+  .card .suit { font-size: 1.2rem; }
+  .card.small { width: 54px; height: 78px; }
+  .card.small .rank { font-size: 0.85rem; }
+  .card.small .suit { font-size: 1.05rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>♠️ Hold'em Trainer</h1>
+  <div class="stats">
+    <span>✓<span class="val" id="correct-count">0</span></span>
+    <span>✗<span class="val" id="wrong-count">0</span></span>
+    <span>📊<span class="val" id="accuracy">--</span></span>
+  </div>
+</div>
+
+<button class="settings-toggle" id="settings-toggle" title="Settings">⚙</button>
+<div class="overlay" id="overlay"></div>
+<div class="settings-panel" id="settings-panel">
+  <button class="close-btn" id="close-settings">✕</button>
+  <h3>⚙ Settings</h3>
+  <label>Starting Bankroll</label>
+  <input type="number" id="start-bankroll" value="1000" min="100" step="100">
+  <label>Ante Amount</label>
+  <select id="ante-amount">
+    <option value="5">$5</option>
+    <option value="10" selected>$10</option>
+    <option value="25">$25</option>
+    <option value="50">$50</option>
+  </select>
+  <label>Show Strategy Hint</label>
+  <select id="show-hint">
+    <option value="after" selected>After Decision</option>
+    <option value="never">Never</option>
+    <option value="always">Always (Cheat Mode)</option>
+  </select>
+  <br>
+  <button class="action-btn primary" id="reset-game" style="width:100%">🔄 New Game</button>
+  <br><br>
+  <a class="action-btn" href="../" style="width:100%;display:block;text-align:center;text-decoration:none">← Back to Games</a>
+</div>
+
+<div class="dealer-area">
+  <div class="dealer-label">Dealer</div>
+  <div class="dealer-cards" id="dealer-cards"></div>
+  <div class="dealer-hand-name" id="dealer-hand-name"></div>
+</div>
+
+<div class="community-area">
+  <div class="community-label">Community Cards</div>
+  <div class="community-cards" id="community-cards"></div>
+</div>
+
+<div class="message-area">
+  <div class="message info" id="message">Place your ante to begin</div>
+</div>
+
+<div class="player-area">
+  <div class="player-label">Your Hand</div>
+  <div class="player-cards" id="player-cards"></div>
+  <div class="player-hand-name" id="player-hand-name"></div>
+</div>
+
+<div class="strategy-hint" id="strategy-hint"></div>
+
+<div class="pot-display" id="pot-display"></div>
+
+<div class="spacer"></div>
+
+<div class="actions" id="actions">
+  <button class="action-btn primary" id="deal-btn" style="display:none" onclick="startRound()">🎴 Deal</button>
+  <button class="action-btn" id="clear-bet-btn" style="display:none" onclick="clearAnte()">Clear</button>
+  <button class="action-btn primary" id="next-btn" style="display:none" onclick="resetForNextRound()">➡️ Next Hand</button>
+  <button class="action-btn" id="check-btn" style="display:none" onclick="playerAction('check')">Check</button>
+  <button class="action-btn" id="bet-btn" style="display:none" onclick="playerAction('bet')">Bet 2x</button>
+  <button class="action-btn" id="raise-btn" style="display:none" onclick="playerAction('raise')">Raise 4x</button>
+  <button class="action-btn danger" id="fold-btn" style="display:none" onclick="playerAction('fold')">Fold</button>
+  <button class="action-btn" id="call-btn" style="display:none" onclick="playerAction('call')">Call</button>
+</div>
+
+<div class="bet-area">
+  <div class="bankroll" id="bankroll-display">Bankroll: $1,000</div>
+</div>
+<div class="bet-area" id="ante-area">
+  <div class="bet-row">
+    <span>Ante:</span>
+    <button class="action-btn" style="min-width:40px;min-height:36px;padding:6px 10px;font-size:0.75rem" onclick="adjustAnte(-1)">−</button>
+    <span class="bet-val" id="ante-display">$10</span>
+    <button class="action-btn" style="min-width:40px;min-height:36px;padding:6px 10px;font-size:0.75rem" onclick="adjustAnte(1)">+</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// TEXAS HOLD'EM TABLE GAME TRAINER
+// Casino-style: Player vs Dealer (house)
+// ═══════════════════════════════════════════
+
+const SUITS = ['♠','♥','♦','♣'];
+const SUIT_COLORS = { '♠':'black', '♥':'red', '♦':'red', '♣':'black' };
+const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const RANK_ORDER = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'A':14 };
+
+// ── Game State ──
+let state = {
+  bankroll: 1000,
+  anteAmount: 10,
+  showHint: 'after',
+  
+  deck: [],
+  deckIndex: 0,
+  roundNum: 0,
+  
+  playerCards: [],
+  dealerCards: [],
+  communityCards: [],
+  
+  phase: 'ante',       // 'ante', 'preflop', 'flop', 'turn', 'river', 'showdown', 'round_over'
+  currentBet: 0,       // total player money in this round (ante + play bet)
+  potSize: 0,          // total in pot (player + dealer contributions)
+  hasPlayed: false,     // whether player has made their play bet (only one play bet per round)
+  
+  stats: { correct:0, wrong:0, total:0 },
+  lastDecision: null,
+};
+
+// ── DOM refs ──
+const $ = id => document.getElementById(id);
+let dealerCardsEl, dealerHandNameEl, communityCardsEl;
+let playerCardsEl, playerHandNameEl;
+let messageEl, actionsEl, potDisplayEl;
+let strategyHintEl, correctCountEl, wrongCountEl, accuracyEl;
+let bankrollDisplayEl, anteDisplayEl, anteAreaEl;
+
+function resolveDOM() {
+  dealerCardsEl = $('dealer-cards');
+  dealerHandNameEl = $('dealer-hand-name');
+  communityCardsEl = $('community-cards');
+  playerCardsEl = $('player-cards');
+  playerHandNameEl = $('player-hand-name');
+  messageEl = $('message');
+  actionsEl = $('actions');
+  potDisplayEl = $('pot-display');
+  strategyHintEl = $('strategy-hint');
+  correctCountEl = $('correct-count');
+  wrongCountEl = $('wrong-count');
+  accuracyEl = $('accuracy');
+  bankrollDisplayEl = $('bankroll-display');
+  anteDisplayEl = $('ante-display');
+  anteAreaEl = $('ante-area');
+}
+
+// ── Settings ──
+function loadSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('he_trainer_settings') || '{}');
+    if (saved.bankroll) state.bankroll = saved.bankroll;
+    if (saved.anteAmount) state.anteAmount = saved.anteAmount;
+    if (saved.showHint) state.showHint = saved.showHint;
+  } catch(e) {}
+  try { $('start-bankroll').value = state.bankroll; } catch(e) {}
+  try { $('ante-amount').value = state.anteAmount; } catch(e) {}
+  try { $('show-hint').value = state.showHint; } catch(e) {}
+}
+
+function saveSettings() {
+  localStorage.setItem('he_trainer_settings', JSON.stringify({
+    bankroll: state.bankroll,
+    anteAmount: state.anteAmount,
+    showHint: state.showHint,
+  }));
+}
+
+// ── Deck ──
+function buildDeck() {
+  state.deck = [];
+  for (const suit of SUITS) {
+    for (const rank of RANKS) {
+      state.deck.push({ rank, suit });
+    }
+  }
+  for (let i = state.deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [state.deck[i], state.deck[j]] = [state.deck[j], state.deck[i]];
+  }
+  state.deckIndex = 0;
+}
+
+function dealCard() {
+  if (state.deckIndex >= state.deck.length) {
+    buildDeck();
+  }
+  return state.deck[state.deckIndex++];
+}
+
+// ── Card Rendering ──
+function renderCard(card, faceDown = false, small = false) {
+  const div = document.createElement('div');
+  div.className = 'card';
+  if (small) div.classList.add('small');
+  if (faceDown) {
+    div.classList.add('face-down');
+  } else {
+    div.classList.add(SUIT_COLORS[card.suit]);
+    div.innerHTML = `
+      <span class="corner-rank">${card.rank}</span>
+      <span class="corner-suit">${card.suit}</span>
+      <span class="rank">${card.rank}</span>
+      <span class="suit">${card.suit}</span>
+    `;
+  }
+  return div;
+}
+
+// ── Poker Hand Evaluation ──
+function evaluateHand(cards) {
+  // cards: array of {rank, suit} — 5-7 cards (2 hole + 5 community)
+  // Returns: { name, rank, value, cards: best 5 }
+  
+  const allCards = [...cards];
+  
+  // Sort by rank descending
+  allCards.sort((a, b) => RANK_ORDER[b.rank] - RANK_ORDER[a.rank]);
+  
+  // Check for each hand type from best to worst
+  const flush = checkFlush(allCards);
+  const straight = checkStraight(allCards);
+  const groups = getRankGroups(allCards);
+  
+  // Straight flush
+  if (flush && straight) {
+    const sfCards = getStraightFlushCards(allCards);
+    if (sfCards) {
+      return { name: 'Straight Flush', rank: 8, value: straightHigh(sfCards), cards: sfCards };
+    }
+  }
+  
+  // Royal flush is just the best straight flush
+  if (flush && straight) {
+    const sfCards = getStraightFlushCards(allCards);
+    if (sfCards && straightHigh(sfCards) === 14) {
+      return { name: 'Royal Flush', rank: 9, value: 14, cards: sfCards };
+    }
+  }
+  
+  // Four of a kind
+  if (groups.four.length > 0) {
+    const fourRank = groups.four[0];
+    const kickers = allCards.filter(c => RANK_ORDER[c.rank] !== fourRank).slice(0, 1);
+    return { name: 'Four of a Kind', rank: 7, value: fourRank, cards: getByRank(allCards, fourRank).concat(kickers) };
+  }
+  
+  // Full house
+  if (groups.three.length > 0 && groups.pairs.length > 0) {
+    const threeRank = groups.three[0];
+    const pairRank = groups.pairs[0];
+    return { name: 'Full House', rank: 6, value: threeRank * 100 + pairRank, cards: getByRank(allCards, threeRank).concat(getByRank(allCards, pairRank)) };
+  }
+  if (groups.three.length >= 2) {
+    const r1 = groups.three[0], r2 = groups.three[1];
+    return { name: 'Full House', rank: 6, value: r1 * 100 + r2, cards: getByRank(allCards, r1).concat(getByRank(allCards, r2).slice(0,2)) };
+  }
+  
+  // Flush
+  if (flush) {
+    const flushCards = getFlushCards(allCards);
+    return { name: 'Flush', rank: 5, value: flushValue(flushCards), cards: flushCards.slice(0, 5) };
+  }
+  
+  // Straight
+  if (straight) {
+    const straightCards = getStraightCards(allCards);
+    return { name: 'Straight', rank: 4, value: straightHigh(straightCards), cards: straightCards };
+  }
+  
+  // Three of a kind
+  if (groups.three.length > 0) {
+    const threeRank = groups.three[0];
+    const kickers = allCards.filter(c => RANK_ORDER[c.rank] !== threeRank).slice(0, 2);
+    return { name: 'Three of a Kind', rank: 3, value: threeRank, cards: getByRank(allCards, threeRank).concat(kickers) };
+  }
+  
+  // Two pair
+  if (groups.pairs.length >= 2) {
+    const r1 = groups.pairs[0], r2 = groups.pairs[1];
+    const kicker = allCards.filter(c => RANK_ORDER[c.rank] !== r1 && RANK_ORDER[c.rank] !== r2)[0];
+    return { name: 'Two Pair', rank: 2, value: r1 * 10000 + r2 * 100 + RANK_ORDER[kicker.rank], cards: getByRank(allCards, r1).concat(getByRank(allCards, r2)).concat([kicker]) };
+  }
+  
+  // One pair
+  if (groups.pairs.length === 1) {
+    const pairRank = groups.pairs[0];
+    const kickers = allCards.filter(c => RANK_ORDER[c.rank] !== pairRank).slice(0, 3);
+    return { name: 'One Pair', rank: 1, value: pairRank, cards: getByRank(allCards, pairRank).concat(kickers) };
+  }
+  
+  // High card
+  return { name: 'High Card', rank: 0, value: RANK_ORDER[allCards[0].rank], cards: allCards.slice(0, 5) };
+}
+
+function getRankGroups(cards) {
+  const count = {};
+  cards.forEach(c => {
+    const r = RANK_ORDER[c.rank];
+    count[r] = (count[r] || 0) + 1;
+  });
+  const four = [], three = [], pairs = [];
+  Object.entries(count).forEach(([rank, cnt]) => {
+    const r = parseInt(rank);
+    if (cnt === 4) four.push(r);
+    else if (cnt === 3) three.push(r);
+    else if (cnt === 2) pairs.push(r);
+  });
+  four.sort((a,b) => b-a);
+  three.sort((a,b) => b-a);
+  pairs.sort((a,b) => b-a);
+  return { four, three, pairs };
+}
+
+function checkFlush(cards) {
+  const suits = {};
+  cards.forEach(c => { suits[c.suit] = (suits[c.suit] || 0) + 1; });
+  return Object.values(suits).some(c => c >= 5);
+}
+
+function getFlushCards(cards) {
+  const suits = {};
+  cards.forEach(c => { suits[c.suit] = (suits[c.suit] || 0) + 1; });
+  const flushSuit = Object.entries(suits).find(([,c]) => c >= 5)[0];
+  return cards.filter(c => c.suit === flushSuit).sort((a,b) => RANK_ORDER[b.rank] - RANK_ORDER[a.rank]);
+}
+
+function flushValue(cards) {
+  return cards.slice(0,5).reduce((acc, c, i) => acc + RANK_ORDER[c.rank] * Math.pow(100, 4-i), 0);
+}
+
+function checkStraight(cards) {
+  const ranks = [...new Set(cards.map(c => RANK_ORDER[c.rank]))].sort((a,b) => b-a);
+  // Check for A-2-3-4-5 (wheel)
+  if (ranks.includes(14)) ranks.push(1);
+  
+  for (let i = 0; i <= ranks.length - 5; i++) {
+    if (ranks[i] - ranks[i+4] === 4) return true;
+  }
+  return false;
+}
+
+function getStraightCards(cards) {
+  const unique = [];
+  const seen = new Set();
+  cards.sort((a,b) => RANK_ORDER[b.rank] - RANK_ORDER[a.rank]);
+  cards.forEach(c => {
+    const r = RANK_ORDER[c.rank];
+    if (!seen.has(r)) { seen.add(r); unique.push(c); }
+  });
+  
+  // Check for wheel
+  const hasAce = unique.some(c => c.rank === 'A');
+  if (hasAce) {
+    const ace = unique.find(c => c.rank === 'A');
+    unique.push({ ...ace, _wheel: true });
+  }
+  
+  const ranks = unique.map(c => c._wheel ? 1 : RANK_ORDER[c.rank]);
+  
+  for (let i = 0; i <= ranks.length - 5; i++) {
+    if (ranks[i] - ranks[i+4] === 4) {
+      return unique.slice(i, i+5).map(c => ({...c}));
+    }
+  }
+  return unique.slice(0, 5);
+}
+
+function straightHigh(cards) {
+  const ranks = cards.map(c => c._wheel ? 1 : RANK_ORDER[c.rank]).sort((a,b) => b-a);
+  return ranks[0];
+}
+
+function getStraightFlushCards(cards) {
+  const suits = {};
+  cards.forEach(c => { suits[c.suit] = (suits[c.suit] || 0) + 1; });
+  const flushSuit = Object.entries(suits).find(([,c]) => c >= 5)?.[0];
+  if (!flushSuit) return null;
+  
+  const suited = cards.filter(c => c.suit === flushSuit);
+  if (checkStraight(suited)) {
+    return getStraightCards(suited);
+  }
+  return null;
+}
+
+function getByRank(cards, rankVal) {
+  return cards.filter(c => RANK_ORDER[c.rank] === rankVal);
+}
+
+function compareHands(hand1, hand2) {
+  // Returns: 1 if hand1 wins, -1 if hand2 wins, 0 if tie
+  if (hand1.rank !== hand2.rank) return hand1.rank > hand2.rank ? 1 : -1;
+  if (hand1.value !== hand2.value) return hand1.value > hand2.value ? 1 : -1;
+  // Compare kickers
+  const c1 = hand1.cards.map(c => RANK_ORDER[c.rank]).sort((a,b) => b-a);
+  const c2 = hand2.cards.map(c => RANK_ORDER[c.rank]).sort((a,b) => b-a);
+  for (let i = 0; i < Math.min(c1.length, c2.length); i++) {
+    if (c1[i] !== c2[i]) return c1[i] > c2[i] ? 1 : -1;
+  }
+  return 0;
+}
+
+// ── Strategy Engine ──
+function getPreflopStrategy(cards) {
+  // Simple preflop strategy based on hand strength
+  const r1 = RANK_ORDER[cards[0].rank];
+  const r2 = RANK_ORDER[cards[1].rank];
+  const suited = cards[0].suit === cards[1].suit;
+  const pair = cards[0].rank === cards[1].rank;
+  const high = Math.max(r1, r2);
+  const low = Math.min(r1, r2);
+  
+  // Premium pairs: always raise 4x
+  if (pair && high >= 10) return 'raise';
+  // Medium pairs: raise 4x
+  if (pair && high >= 7) return 'raise';
+  // Small pairs: bet 2x
+  if (pair) return 'bet';
+  
+  // Premium unpaired
+  if (high >= 13 && low >= 12) return 'raise'; // AK, AQ, AJ, KQ
+  if (high === 14 && low >= 10 && suited) return 'raise'; // ATs+
+  if (high >= 12 && low >= 11 && suited) return 'raise'; // KQs, KJs, QJs
+  
+  // Strong hands: bet 2x
+  if (high === 14 && low >= 8) return 'bet'; // A8+
+  if (high >= 12 && low >= 10) return 'bet'; // KT+, QT+, JT
+  if (high >= 10 && low >= 9 && suited) return 'bet'; // T9s+
+  if (high === 14 && suited) return 'bet'; // Any suited ace
+  
+  // Playable: check
+  if (high >= 10 && low >= 8) return 'check'; // T8+
+  if (suited && high >= 9 && low >= 7) return 'check'; // 97s+
+  if (high >= 12) return 'check'; // Any K or Q
+  
+  // Fold everything else
+  return 'fold';
+}
+
+function getPostflopStrategy(playerCards, communityCards) {
+  const allCards = [...playerCards, ...communityCards];
+  const hand = evaluateHand(allCards);
+  
+  // Strong made hands: raise
+  if (hand.rank >= 5) return 'raise'; // Flush or better
+  if (hand.rank === 4 && hand.value >= 10) return 'raise'; // Strong straight
+  if (hand.rank === 3 && hand.value >= 10) return 'raise'; // Strong trips
+  
+  // Medium hands: bet
+  if (hand.rank >= 3) return 'bet'; // Trips
+  if (hand.rank === 2 && hand.value > 100000) return 'bet'; // Strong two pair (high pairs)
+  if (hand.rank === 1 && hand.value >= 12) return 'bet'; // Top pair good kicker
+  
+  // Weak made hands: check
+  if (hand.rank >= 1) return 'check'; // Any pair
+  if (hand.rank === 0 && hand.value >= 12) return 'check'; // High card A/K
+  
+  // Draw potential: check
+  const hasDraw = checkDrawPotential(playerCards, communityCards);
+  if (hasDraw) return 'check';
+  
+  return 'fold';
+}
+
+function checkDrawPotential(playerCards, communityCards) {
+  // Check for flush draw (4 to a flush)
+  const allCards = [...playerCards, ...communityCards];
+  const suits = {};
+  allCards.forEach(c => { suits[c.suit] = (suits[c.suit] || 0) + 1; });
+  if (Object.values(suits).some(c => c >= 4)) return true;
+  
+  // Check for open-ended straight draw
+  const ranks = [...new Set(allCards.map(c => RANK_ORDER[c.rank]))].sort((a,b) => a-b);
+  for (let i = 0; i <= ranks.length - 4; i++) {
+    if (ranks[i+3] - ranks[i] === 3) return true;
+  }
+  
+  return false;
+}
+
+function getCorrectAction() {
+  if (state.phase === 'preflop') {
+    return getPreflopStrategy(state.playerCards);
+  }
+  return getPostflopStrategy(state.playerCards, state.communityCards);
+}
+
+// ── Render ──
+function renderDealer(showAll = false) {
+  dealerCardsEl.innerHTML = '';
+  if (state.dealerCards.length === 0) {
+    dealerHandNameEl.textContent = '';
+    return;
+  }
+  state.dealerCards.forEach((card, i) => {
+    const faceDown = !showAll && state.phase !== 'showdown' && state.phase !== 'round_over';
+    dealerCardsEl.appendChild(renderCard(card, faceDown));
+  });
+  
+  if (showAll || state.phase === 'showdown' || state.phase === 'round_over') {
+    const hand = evaluateHand([...state.dealerCards, ...state.communityCards]);
+    dealerHandNameEl.textContent = hand.name;
+  } else {
+    dealerHandNameEl.textContent = '';
+  }
+}
+
+function renderCommunity() {
+  communityCardsEl.innerHTML = '';
+  const totalSlots = 5;
+  for (let i = 0; i < totalSlots; i++) {
+    if (i < state.communityCards.length) {
+      communityCardsEl.appendChild(renderCard(state.communityCards[i], false, true));
+    } else {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'community-placeholder';
+      communityCardsEl.appendChild(placeholder);
+    }
+  }
+}
+
+function renderPlayer() {
+  playerCardsEl.innerHTML = '';
+  if (state.playerCards.length === 0) {
+    playerHandNameEl.textContent = '';
+    return;
+  }
+  state.playerCards.forEach(card => {
+    playerCardsEl.appendChild(renderCard(card));
+  });
+  
+  if (state.communityCards.length > 0) {
+    const allCards = [...state.playerCards, ...state.communityCards];
+    const hand = evaluateHand(allCards);
+    playerHandNameEl.textContent = hand.name;
+  } else {
+    playerHandNameEl.textContent = '';
+  }
+}
+
+function renderActions() {
+  const dealBtn = $('deal-btn');
+  const clearBtn = $('clear-bet-btn');
+  const nextBtn = $('next-btn');
+  const checkBtn = $('check-btn');
+  const betBtn = $('bet-btn');
+  const raiseBtn = $('raise-btn');
+  const foldBtn = $('fold-btn');
+  const callBtn = $('call-btn');
+  
+  [dealBtn, clearBtn, nextBtn, checkBtn, betBtn, raiseBtn, foldBtn, callBtn].forEach(b => {
+    if (b) b.style.display = 'none';
+  });
+  
+  if (state.phase === 'ante') {
+    if (state.currentBet > 0) {
+      dealBtn.style.display = '';
+      clearBtn.style.display = '';
+    }
+    return;
+  }
+  
+  if (state.phase === 'round_over') {
+    nextBtn.style.display = '';
+    return;
+  }
+  
+  // Player action phases
+  if (['preflop', 'flop', 'turn', 'river'].includes(state.phase)) {
+    // If player already made their play bet, auto-advance (no more decisions)
+    if (state.hasPlayed) {
+      // Auto-advance after a brief delay for visual feedback
+      setTimeout(() => advancePhase(), 300);
+      return;
+    }
+    checkBtn.style.display = '';
+    betBtn.style.display = '';
+    raiseBtn.style.display = '';
+    foldBtn.style.display = '';
+  }
+}
+
+function renderAll() {
+  const showDealer = state.phase === 'showdown' || state.phase === 'round_over';
+  renderDealer(showDealer);
+  renderCommunity();
+  renderPlayer();
+  renderActions();
+  updateStats();
+  updateDisplay();
+}
+
+function updateStats() {
+  correctCountEl.textContent = state.stats.correct;
+  wrongCountEl.textContent = state.stats.wrong;
+  const total = state.stats.total;
+  accuracyEl.textContent = total > 0 ? `${Math.round(state.stats.correct / total * 100)}%` : '--';
+}
+
+function updateDisplay() {
+  bankrollDisplayEl.textContent = `Bankroll: $${state.bankroll.toLocaleString()}`;
+  anteDisplayEl.textContent = `$${state.anteAmount}`;
+  
+  if (state.phase === 'ante') {
+    anteAreaEl.style.display = '';
+    potDisplayEl.textContent = '';
+  } else {
+    anteAreaEl.style.display = 'none';
+    potDisplayEl.textContent = `Pot: $${state.potSize}`;
+  }
+}
+
+function adjustAnte(dir) {
+  if (state.phase !== 'ante') return;
+  const amounts = [5, 10, 25, 50, 100];
+  const currentIdx = amounts.indexOf(state.anteAmount);
+  const newIdx = Math.max(0, Math.min(amounts.length - 1, currentIdx + dir));
+  const newAmount = amounts[newIdx];
+  if (newAmount > state.bankroll) return;
+  state.anteAmount = newAmount;
+  state.currentBet = newAmount;
+  renderAll();
+}
+
+function clearAnte() {
+  if (state.phase !== 'ante') return;
+  state.currentBet = 0;
+  renderAll();
+}
+
+// ═══════════════════════════════════════════
+// GAME FLOW
+// ═══════════════════════════════════════════
+
+function startRound() {
+  if (state.anteAmount <= 0 || state.anteAmount > state.bankroll) return;
+  
+  state.roundNum++;
+  state.phase = 'preflop';
+  state.currentBet = state.anteAmount;
+  state.potSize = state.anteAmount * 2; // player ante + dealer matching ante
+  state.bankroll -= state.anteAmount;
+  state.hasPlayed = false;
+  state.playerCards = [];
+  state.dealerCards = [];
+  state.communityCards = [];
+  state.lastDecision = null;
+  
+  buildDeck();
+  
+  // Deal hole cards
+  state.playerCards.push(dealCard());
+  state.dealerCards.push(dealCard());
+  state.playerCards.push(dealCard());
+  state.dealerCards.push(dealCard());
+  
+  messageEl.className = 'message info';
+  messageEl.textContent = 'Pre-flop — Check, Bet 2x, Raise 4x, or Fold';
+  strategyHintEl.textContent = '';
+  
+  if (state.showHint === 'always') showCheatHint();
+  
+  renderAll();
+}
+
+function showCheatHint() {
+  const correctAction = getCorrectAction();
+  const actionNames = { check:'Check', bet:'Bet 2x', raise:'Raise 4x', fold:'Fold' };
+  strategyHintEl.textContent = `💡 Hint: ${actionNames[correctAction]}`;
+}
+
+function playerAction(action) {
+  if (!['preflop', 'flop', 'turn', 'river'].includes(state.phase)) return;
+  
+  // Check strategy
+  const correctAction = getCorrectAction();
+  const wasCorrect = action === correctAction;
+  
+  state.lastDecision = { action, correctAction, wasCorrect, phase: state.phase };
+  
+  if (wasCorrect) {
+    state.stats.correct++;
+  } else {
+    state.stats.wrong++;
+  }
+  state.stats.total++;
+  
+  // Show feedback
+  showFeedback(wasCorrect, correctAction, action);
+  
+  // Execute action
+  switch (action) {
+    case 'fold':
+      state.phase = 'round_over';
+      state.potSize = 0; // lose ante
+      messageEl.className = 'message lose';
+      messageEl.textContent = 'Fold — You lose your ante.';
+      endRound();
+      return;
+      
+    case 'check':
+      // No play bet — advance to next street
+      advancePhase();
+      break;
+      
+    case 'bet':
+      // Bet 2x ante (one-time play bet)
+      if (state.hasPlayed) {
+        messageEl.textContent = 'Already made your play bet!';
+        return;
+      }
+      const bet2x = state.anteAmount * 2;
+      if (state.bankroll < bet2x) {
+        messageEl.textContent = 'Not enough for 2x bet!';
+        return;
+      }
+      state.bankroll -= bet2x;
+      state.currentBet += bet2x;
+      state.potSize += bet2x;
+      state.hasPlayed = true;
+      advancePhase();
+      break;
+      
+    case 'raise':
+      // Raise 4x ante (one-time play bet)
+      if (state.hasPlayed) {
+        messageEl.textContent = 'Already made your play bet!';
+        return;
+      }
+      const raise4x = state.anteAmount * 4;
+      if (state.bankroll < raise4x) {
+        messageEl.textContent = 'Not enough for 4x raise!';
+        return;
+      }
+      state.bankroll -= raise4x;
+      state.currentBet += raise4x;
+      state.potSize += raise4x;
+      state.hasPlayed = true;
+      advancePhase();
+      break;
+  }
+  
+  renderAll();
+}
+
+function advancePhase() {
+  switch (state.phase) {
+    case 'preflop':
+      state.phase = 'flop';
+      state.communityCards.push(dealCard());
+      state.communityCards.push(dealCard());
+      state.communityCards.push(dealCard());
+      messageEl.className = 'message info';
+      messageEl.textContent = state.hasPlayed ? 'Flop' : 'Flop — Check, Bet 2x, Raise 4x, or Fold';
+      break;
+      
+    case 'flop':
+      state.phase = 'turn';
+      state.communityCards.push(dealCard());
+      messageEl.className = 'message info';
+      messageEl.textContent = state.hasPlayed ? 'Turn' : 'Turn — Check, Bet 2x, Raise 4x, or Fold';
+      break;
+      
+    case 'turn':
+      state.phase = 'river';
+      state.communityCards.push(dealCard());
+      messageEl.className = 'message info';
+      messageEl.textContent = state.hasPlayed ? 'River' : 'River — Check, Bet 2x, Raise 4x, or Fold';
+      break;
+      
+    case 'river':
+      showdown();
+      return;
+  }
+  
+  if (state.showHint === 'always') showCheatHint();
+  renderAll();
+}
+
+function showdown() {
+  state.phase = 'showdown';
+  
+  const playerHand = evaluateHand([...state.playerCards, ...state.communityCards]);
+  const dealerHand = evaluateHand([...state.dealerCards, ...state.communityCards]);
+  
+  const result = compareHands(playerHand, dealerHand);
+  
+  let resultText, resultClass;
+  if (result > 0) {
+    // Player wins
+    state.bankroll += state.potSize;
+    resultText = `Win — ${playerHand.name} beats ${dealerHand.name} +$${state.potSize - state.currentBet}`;
+    resultClass = 'win';
+  } else if (result < 0) {
+    // Dealer wins
+    resultText = `Lose — ${playerHand.name} loses to ${dealerHand.name} -$${state.currentBet}`;
+    resultClass = 'lose';
+  } else {
+    // Push
+    state.bankroll += state.currentBet; // return bet
+    resultText = `Push — ${playerHand.name} ties ${dealerHand.name}`;
+    resultClass = 'result';
+  }
+  
+  messageEl.className = `message ${resultClass}`;
+  messageEl.textContent = resultText;
+  strategyHintEl.textContent = '';
+  
+  endRound();
+}
+
+function endRound() {
+  state.phase = 'round_over';
+  renderAll();
+}
+
+function resetForNextRound() {
+  state.phase = 'ante';
+  state.playerCards = [];
+  state.dealerCards = [];
+  state.communityCards = [];
+  state.currentBet = state.anteAmount;
+  state.potSize = 0;
+  state.hasPlayed = false;
+  state.lastDecision = null;
+  
+  messageEl.className = 'message info';
+  messageEl.textContent = 'Adjust your ante and deal to begin';
+  strategyHintEl.textContent = '';
+  
+  if (state.bankroll <= 0) {
+    state.bankroll = parseInt($('start-bankroll').value) || 1000;
+    messageEl.textContent = 'Bankroll refilled! Place your ante.';
+  }
+  
+  renderAll();
+}
+
+// ── Feedback ──
+function showFeedback(wasCorrect, correctAction, action) {
+  const actionNames = {
+    'check': 'Check',
+    'bet': 'Bet 2x',
+    'raise': 'Raise 4x',
+    'fold': 'Fold',
+  };
+  
+  if (wasCorrect) {
+    strategyHintEl.textContent = `✅ Correct! ${actionNames[action]} is the right play.`;
+    strategyHintEl.style.color = '#5dfc8e';
+  } else {
+    strategyHintEl.textContent = `❌ Wrong! You chose ${actionNames[action]}, but should ${actionNames[correctAction]}.`;
+    strategyHintEl.style.color = '#ff8a80';
+  }
+  
+  // Reset color after 2.5s
+  setTimeout(() => {
+    strategyHintEl.style.color = '';
+  }, 2500);
+}
+
+// ── Settings Panel ──
+$('settings-toggle').addEventListener('click', () => {
+  $('settings-panel').classList.add('open');
+  $('overlay').classList.add('show');
+});
+
+$('close-settings').addEventListener('click', closeSettings);
+$('overlay').addEventListener('click', closeSettings);
+
+function closeSettings() {
+  $('settings-panel').classList.remove('open');
+  $('overlay').classList.remove('show');
+  applySettings();
+}
+
+function applySettings() {
+  const newBankroll = parseInt($('start-bankroll').value) || 1000;
+  const newAnte = parseInt($('ante-amount').value);
+  const newShowHint = $('show-hint').value;
+  
+  if (state.phase === 'ante') {
+    state.bankroll = newBankroll;
+  }
+  state.anteAmount = newAnte;
+  state.showHint = newShowHint;
+  
+  saveSettings();
+  renderAll();
+}
+
+$('reset-game').addEventListener('click', () => {
+  state.bankroll = parseInt($('start-bankroll').value) || 1000;
+  state.stats = { correct: 0, wrong: 0, total: 0 };
+  state.roundNum = 0;
+  state.anteAmount = parseInt($('ante-amount').value) || 10;
+  buildDeck();
+  resetForNextRound();
+  closeSettings();
+});
+
+// ── Init ──
+function init() {
+  resolveDOM();
+  loadSettings();
+  buildDeck();
+  resetForNextRound();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>
