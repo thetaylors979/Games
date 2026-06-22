@@ -1049,6 +1049,8 @@ function renderActions() {
   
   if (state.phase === 'round_over') {
     nextBtn.style.display = '';
+    nextBtn.textContent = '➡️ Next Hand';
+    nextBtn.onclick = resetForNextRound;
     return;
   }
   
