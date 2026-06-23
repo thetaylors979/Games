@@ -65,6 +65,13 @@
         .btn-stop { background: transparent; border: 2px solid var(--card-border); color: var(--text-dim); padding: 14px 36px; font-size: 1rem; font-weight: 700; }
         .btn-launcher { background: transparent; border: 2px solid var(--card-border); color: var(--text-dim); padding: 10px 24px; font-size: 0.85rem; font-weight: 600; border-radius: 10px; cursor: pointer; text-decoration: none; display: inline-block; transition: transform 0.1s ease, border-color 0.15s ease; }
         .btn-launcher:active { transform: scale(0.95); border-color: var(--accent); }
+        .toggle-container { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 16px; }
+        .toggle-label { font-size: 0.85rem; font-weight: 600; color: var(--text-dim); }
+        .toggle-label.active { color: var(--accent); }
+        .toggle-switch { position: relative; width: 56px; height: 28px; background: var(--card-border); border-radius: 14px; cursor: pointer; transition: background 0.2s ease; -webkit-tap-highlight-color: transparent; }
+        .toggle-switch.active { background: var(--accent); }
+        .toggle-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; background: #fff; border-radius: 50%; transition: transform 0.2s ease; }
+        .toggle-switch.active::after { transform: translateX(28px); }
         .start-screen { text-align: center; padding: 16px 0 24px; }
         .start-screen .title { font-size: 1.6rem; font-weight: 800; margin-bottom: 4px; }
         .start-screen .subtitle { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 12px; line-height: 1.4; }
@@ -86,13 +93,18 @@
 
 <div id="startScreen" class="start-screen main">
     <div class="title">🧘 Full Body Stretch</div>
-    <div class="subtitle">
+    <div class="subtitle" id="startSubtitle">
         14 stretches · ~30 min<br>
         Hold 1 min → Rest 15s → Hold 45s
     </div>
+    <div class="toggle-container">
+        <span class="toggle-label active" id="label2min">2 min</span>
+        <div class="toggle-switch active" id="durationToggle"></div>
+        <span class="toggle-label" id="label1min">1 min</span>
+    </div>
     <div class="stretch-list" id="stretchList"></div>
     <button class="btn btn-start" id="startBtn">Start Routine</button>
-    <div style="margin-top:16px"><a class="btn-launcher" href="/">🏠 Back to Launcher</a></div>
+    <div style="margin-top:16px"><a class="btn-launcher" href="../">🏠 Back to Games</a></div>
 </div>
 
 <div id="timerScreen" class="main hidden">
@@ -111,7 +123,7 @@
         <button class="btn btn-skip" id="skipBtn">Skip ⏭</button>
     </div>
     <button class="btn btn-stop" id="stopBtn">Stop</button>
-    <div style="margin-top:12px"><a class="btn-launcher" href="/">🏠 Back to Launcher</a></div>
+    <div style="margin-top:12px"><a class="btn-launcher" href="../">🏠 Back to Games</a></div>
 </div>
 
 <div id="completeScreen" class="complete-screen main hidden">
@@ -120,7 +132,7 @@
     <div class="subtitle">Great job showing up for yourself today.</div>
     <div class="stats" id="completeStats"></div>
     <button class="btn btn-start" id="restartBtn">Start Again</button>
-    <div style="margin-top:16px"><a class="btn-launcher" href="/">🏠 Back to Launcher</a></div>
+    <div style="margin-top:16px"><a class="btn-launcher" href="../">🏠 Back to Games</a></div>
 </div>
 
 <script>
@@ -155,8 +167,18 @@ const HOLD_1 = 60, REST = 15, HOLD_2 = 45, GET_READY = 5;
 const COUNTDOWN_TIMES = [30, 10, 3, 2, 1];
 
 const totalStretches = STRETCHES.length;
-const PER_STRETCH = GET_READY + HOLD_1 + REST + HOLD_2;
-const TOTAL_ROUTINE_SECONDS = totalStretches * PER_STRETCH;
+
+// Duration mode: '2min' (default) or '1min'
+let durationMode = '2min';
+
+function getPerStretchSeconds() {
+    if (durationMode === '1min') return GET_READY + HOLD_1; // 5 + 60 = 65s
+    return GET_READY + HOLD_1 + REST + HOLD_2; // 5 + 60 + 15 + 45 = 125s
+}
+
+function getTotalRoutineSeconds() {
+    return totalStretches * getPerStretchSeconds();
+}
 
 let audioCtx = null;
 function initAudio() {
@@ -194,12 +216,33 @@ function speak(text) {
 
 function buildStretchList() {
     const list = document.getElementById('stretchList');
+    list.innerHTML = '';
     STRETCHES.forEach((s, idx) => {
         const div = document.createElement('div');
         div.className = 'stretch-list-item';
-        div.innerHTML = `<span class="num">${idx + 1}.</span><span class="name">${s.name}</span><span class="target">${s.target}</span><span class="dur">2:00</span>`;
+        const dur = durationMode === '1min' ? '1:00' : '2:00';
+        div.innerHTML = `<span class="num">${idx + 1}.</span><span class="name">${s.name}</span><span class="target">${s.target}</span><span class="dur">${dur}</span>`;
         list.appendChild(div);
     });
+}
+
+function updateStartScreen() {
+    const sub = document.getElementById('startSubtitle');
+    const label2 = document.getElementById('label2min');
+    const label1 = document.getElementById('label1min');
+    const toggle = document.getElementById('durationToggle');
+    if (durationMode === '1min') {
+        sub.innerHTML = '14 stretches · ~15 min<br>Hold 1 min (no rest)';
+        label2.classList.remove('active');
+        label1.classList.add('active');
+        toggle.classList.add('active');
+    } else {
+        sub.innerHTML = '14 stretches · ~30 min<br>Hold 1 min → Rest 15s → Hold 45s';
+        label2.classList.add('active');
+        label1.classList.remove('active');
+        toggle.classList.remove('active');
+    }
+    buildStretchList();
 }
 
 let state = 'idle', currentStretchIdx = 0, currentPhase = '', phaseTimeRemaining = 0, totalTimer = null, startTime = 0;
@@ -211,9 +254,10 @@ function updateUI() {
     if (state === 'idle') return;
 
     let elapsed = 0;
-    for (let i = 0; i < currentStretchIdx; i++) elapsed += PER_STRETCH;
+    const perStretch = getPerStretchSeconds();
+    for (let i = 0; i < currentStretchIdx; i++) elapsed += perStretch;
     elapsed += (getPhaseLength() - phaseTimeRemaining);
-    progressBar.style.width = Math.min((elapsed / TOTAL_ROUTINE_SECONDS) * 100, 100) + '%';
+    progressBar.style.width = Math.min((elapsed / getTotalRoutineSeconds()) * 100, 100) + '%';
 
     if (currentStretchIdx < totalStretches) {
         name.textContent = STRETCHES[currentStretchIdx].name;
@@ -247,8 +291,16 @@ function nextPhase() {
         currentPhase = 'hold-1'; phaseTimeRemaining = HOLD_1;
         playStretchStart(); speak('Hold');
     } else if (currentPhase === 'hold-1') {
-        currentPhase = 'rest'; phaseTimeRemaining = REST;
-        playPhaseChange(); speak('Rest');
+        if (durationMode === '1min') {
+            // 1-min mode: skip rest and hold-2, go straight to next stretch
+            currentStretchIdx++;
+            if (currentStretchIdx >= totalStretches) { finishRoutine(); return; }
+            currentPhase = 'get-ready'; phaseTimeRemaining = GET_READY;
+            playPhaseChange(); speak('Next. ' + STRETCHES[currentStretchIdx].name);
+        } else {
+            currentPhase = 'rest'; phaseTimeRemaining = REST;
+            playPhaseChange(); speak('Rest');
+        }
     } else if (currentPhase === 'rest') {
         currentPhase = 'hold-2'; phaseTimeRemaining = HOLD_2;
         playStretchStart(); speak('Hold');
@@ -355,6 +407,12 @@ $('skipBtn').addEventListener('click', skipStretch);
 $('stopBtn').addEventListener('click', stopRoutine);
 $('restartBtn').addEventListener('click', startRoutine);
 document.addEventListener('click', () => initAudio(), { once: true });
+
+// Duration toggle
+$('durationToggle').addEventListener('click', () => {
+    durationMode = durationMode === '2min' ? '1min' : '2min';
+    updateStartScreen();
+});
 
 buildStretchList();
 </script>
