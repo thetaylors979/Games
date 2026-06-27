@@ -590,7 +590,7 @@ body::before {
   <br>
   <button class="action-btn primary" id="reset-game" style="width:100%">🔄 New Game</button>
   <br><br>
-  <a class="action-btn" href="../" style="width:100%;display:block;text-align:center;text-decoration:none">← Back to Games</a>
+  <a class="action-btn" href="/" style="width:100%;display:block;text-align:center;text-decoration:none">← Back to Launcher</a>
 </div>
 
 <div class="shoe-info">
@@ -949,6 +949,7 @@ function placeBet(amount) {
   if (state.phase !== 'betting') return;
   if (state.currentBet + amount > state.bankroll) return;
   state.currentBet += amount;
+  state.bankroll -= amount;
   renderAll();
 }
 
@@ -1274,12 +1275,12 @@ function startRound() {
   if (isBlackjack(state.playerHands[0].cards)) {
     // Check dealer upcard for insurance (skip insurance for simplicity)
     if (isBlackjack(state.dealerCards)) {
-      // Push
+      // Push — return the bet
       state.playerHands[0].result = 'push';
       state.bankroll += state.currentBet;
       endRound('Both have Blackjack — Push!');
     } else {
-      // Player wins 3:2
+      // Player wins 3:2 — return bet + 1.5x profit
       state.playerHands[0].result = 'blackjack';
       const winAmount = Math.floor(state.currentBet * 1.5);
       state.bankroll += state.currentBet + winAmount;
@@ -1291,6 +1292,7 @@ function startRound() {
   // Check dealer blackjack
   if (isBlackjack(state.dealerCards)) {
     state.playerHands[0].result = 'loss';
+    // Bet already deducted, nothing to return
     endRound('Dealer has Blackjack. You lose.');
     return;
   }
@@ -1359,6 +1361,7 @@ function playerAction(action) {
       break;
       
     case 'double':
+      // Deduct the extra bet (original bet was already deducted in startRound)
       state.bankroll -= hand.bet;
       hand.bet *= 2;
       hand.doubled = true;
