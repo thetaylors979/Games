@@ -318,6 +318,83 @@ body::before {
   border-color: rgba(231,76,60,0.5);
   color: #e74c3c;
 }
+.action-btn.bet-placed {
+  opacity: 0.4;
+  pointer-events: none;
+  border-color: rgba(255,255,255,0.08);
+  position: relative;
+}
+.action-btn.bet-placed::after {
+  content: ' ✓';
+  color: var(--correct);
+  font-size: 0.7rem;
+}
+
+/* ── Rules Panel ── */
+.rules-toggle {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-dim);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  cursor: pointer;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rules-panel {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.rules-panel.hidden { display: none; }
+.rules-content {
+  background: var(--panel-bg);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.rules-content h3 {
+  font-size: 1.1rem;
+  margin-bottom: 16px;
+  color: var(--gold);
+}
+.rules-content h4 {
+  font-size: 0.85rem;
+  margin: 14px 0 6px;
+  color: var(--gold-light);
+}
+.rules-content p, .rules-content li {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin-bottom: 6px;
+}
+.rules-content ul {
+  padding-left: 18px;
+  margin-bottom: 8px;
+}
+.rules-content .close-rules {
+  width: 100%;
+  margin-top: 16px;
+}
 
 /* ── Betting Area ── */
 .bet-area {
@@ -496,6 +573,7 @@ body::before {
 </div>
 
 <button class="settings-toggle" id="settings-toggle" title="Settings">⚙</button>
+<button class="rules-toggle" id="rules-toggle" title="Rules">?</button>
 <div class="overlay" id="overlay"></div>
 <div class="settings-panel" id="settings-panel">
   <button class="close-btn" id="close-settings">✕</button>
@@ -519,6 +597,41 @@ body::before {
   <button class="action-btn primary" id="reset-game" style="width:100%">🔄 New Game</button>
   <br><br>
   <a class="action-btn" href="../" style="width:100%;display:block;text-align:center;text-decoration:none">← Back to Launcher</a>
+</div>
+
+<!-- Rules Panel -->
+<div class="rules-panel hidden" id="rules-panel">
+  <div class="rules-content">
+    <h3>📖 How to Play</h3>
+    
+    <h4>🎯 Goal</h4>
+    <p>Beat the dealer's hand. You and the dealer each get 2 hole cards + 5 community cards. Best 5-card poker hand wins.</p>
+    
+    <h4>💰 Betting Rules</h4>
+    <ul>
+      <li><strong>Ante</strong> — placed before each hand to play</li>
+      <li><strong>Check</strong> — see the next card(s) for free</li>
+      <li><strong>Bet 2×</strong> — wager 2× your ante. Use for <em>good</em> hands</li>
+      <li><strong>Raise 4×</strong> — wager 4× your ante. Use for <em>premium</em> hands</li>
+      <li><strong>Fold</strong> — give up, lose your ante only</li>
+    </ul>
+    
+    <h4>⚠️ One Bet Only</h4>
+    <p>Once you <strong>Bet 2×</strong> or <strong>Raise 4×</strong>, you cannot bet again. Choose carefully! You can Check on multiple streets before deciding to bet.</p>
+    
+    <h4>📊 Bet vs Raise Guide</h4>
+    <ul>
+      <li><strong>Raise 4×:</strong> Premium pairs (10s+), AK/AQ, suited broadway — you're a strong favorite</li>
+      <li><strong>Bet 2×:</strong> Medium pairs, ace with decent kicker, suited connectors — good but not dominant</li>
+      <li><strong>Check:</strong> Playable hands, drawing hands — see more cards before committing</li>
+      <li><strong>Fold:</strong> Weak hands with little potential — save your money</li>
+    </ul>
+    
+    <h4>🃏 Hand Rankings</h4>
+    <p>Royal Flush > Straight Flush > Four of a Kind > Full House > Flush > Straight > Three of a Kind > Two Pair > One Pair > High Card</p>
+    
+    <button class="action-btn primary close-rules" id="close-rules">Got it!</button>
+  </div>
 </div>
 
 <div class="dealer-area">
@@ -1075,8 +1188,19 @@ function renderActions() {
       nextBtn.style.display = '';
       nextBtn.textContent = '➡️ Continue';
       nextBtn.onclick = () => { nextBtn.style.display = 'none'; advancePhase(); };
+      // Show grayed-out bet buttons so player can see what they chose
+      checkBtn.style.display = '';
+      checkBtn.classList.add('bet-placed');
+      betBtn.style.display = '';
+      betBtn.classList.add('bet-placed');
+      raiseBtn.style.display = '';
+      raiseBtn.classList.add('bet-placed');
+      foldBtn.style.display = '';
+      foldBtn.classList.add('bet-placed');
       return;
     }
+    // Reset bet-placed state
+    [checkBtn, betBtn, raiseBtn, foldBtn].forEach(b => { if (b) b.classList.remove('bet-placed'); });
     checkBtn.style.display = '';
     betBtn.style.display = '';
     raiseBtn.style.display = '';
@@ -1373,6 +1497,17 @@ $('settings-toggle').addEventListener('click', () => {
 
 $('close-settings').addEventListener('click', closeSettings);
 $('overlay').addEventListener('click', closeSettings);
+
+// Rules panel
+$('rules-toggle').addEventListener('click', () => {
+  $('rules-panel').classList.remove('hidden');
+});
+$('close-rules').addEventListener('click', () => {
+  $('rules-panel').classList.add('hidden');
+});
+$('rules-panel').addEventListener('click', (e) => {
+  if (e.target === $('rules-panel')) $('rules-panel').classList.add('hidden');
+});
 
 function closeSettings() {
   $('settings-panel').classList.remove('open');
