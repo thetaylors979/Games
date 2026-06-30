@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Car Maintenance</title>
+    <style>
+        :root {
+            --bg: #0f0f11;
+            --card-bg: #1a1a1f;
+            --card-border: #2a2a30;
+            --text: #e8e8ec;
+            --text-dim: #8a8a94;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.12);
+            --warn: #ef4444;
+            --ok: #22c55e;
+            --due: #f59e0b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh; min-height: 100dvh;
+            display: flex; flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none; -webkit-user-select: none;
+        }
+        .header {
+            padding: 16px 20px 8px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; background: var(--bg); z-index: 10;
+        }
+        .header h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; }
+        .header-actions { display: flex; gap: 8px; }
+        .btn-icon {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            color: var(--text-dim); width: 36px; height: 36px; border-radius: 10px;
+            font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .btn-icon:active { border-color: var(--accent); color: var(--accent); }
+
+        .content { flex: 1; overflow-y: auto; padding: 0 20px 16px; -webkit-overflow-scrolling: touch; }
+
+        /* Vehicle cards */
+        .vehicle-card {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 14px; padding: 16px; margin-bottom: 10px;
+            cursor: pointer; transition: border-color 0.15s, background 0.15s;
+        }
+        .vehicle-card:active { border-color: var(--accent); background: var(--accent-glow); }
+        .vehicle-card .v-name { font-size: 1.05rem; font-weight: 700; }
+        .vehicle-card .v-detail { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+        .vehicle-card .v-meta { display: flex; gap: 16px; margin-top: 8px; font-size: 0.75rem; }
+        .vehicle-card .v-meta span { color: var(--text-dim); }
+        .vehicle-card .v-meta strong { color: var(--text); }
+        .vehicle-card .v-due {
+            margin-top: 8px; padding: 6px 10px; border-radius: 8px;
+            font-size: 0.7rem; font-weight: 600; display: inline-block;
+        }
+        .v-due.overdue { background: rgba(239,68,68,0.15); color: var(--warn); }
+        .v-due.soon { background: rgba(245,158,11,0.15); color: var(--due); }
+        .v-due.ok { background: rgba(34,197,94,0.12); color: var(--ok); }
+
+        /* Detail view */
+        .detail-header {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+        }
+        .btn-back {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            color: var(--text); width: 36px; height: 36px; border-radius: 10px;
+            font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .detail-header h2 { font-size: 1.15rem; font-weight: 700; flex: 1; }
+        .detail-meta { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 16px; line-height: 1.6; }
+
+        /* Service log */
+        .log-entry {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+        }
+        .log-entry .log-type { font-size: 0.85rem; font-weight: 700; }
+        .log-entry .log-details { font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
+        .log-entry .log-cost { font-size: 0.8rem; font-weight: 600; margin-top: 4px; }
+        .log-entry .log-actions { margin-top: 6px; display: flex; gap: 8px; }
+        .btn-sm {
+            background: transparent; border: 1px solid var(--card-border);
+            color: var(--text-dim); padding: 4px 12px; border-radius: 6px;
+            font-size: 0.7rem; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+        }
+        .btn-sm.danger:active { border-color: var(--warn); color: var(--warn); }
+
+        /* Forms */
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 0.7rem; font-weight: 600; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .form-group input, .form-group select {
+            width: 100%; background: var(--card-bg); border: 1px solid var(--card-border);
+            color: var(--text); padding: 12px 14px; border-radius: 10px;
+            font-size: 0.9rem; outline: none; transition: border-color 0.15s;
+            -webkit-appearance: none; appearance: none;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+        .form-group input::placeholder { color: var(--text-dim); }
+        .form-group select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%238a8a94' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center;
+            padding-right: 32px;
+        }
+        .form-row { display: flex; gap: 8px; }
+        .form-row .form-group { flex: 1; }
+        .btn-primary {
+            width: 100%; background: var(--accent); color: #fff; border: none;
+            padding: 14px; border-radius: 12px; font-size: 0.95rem;
+            font-weight: 700; cursor: pointer; transition: transform 0.1s, opacity 0.15s;
+        }
+        .btn-primary:active { transform: scale(0.97); }
+        .btn-secondary {
+            width: 100%; background: transparent; border: 1px solid var(--card-border);
+            color: var(--text-dim); padding: 12px; border-radius: 12px;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer; margin-top: 8px;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .btn-secondary:active { border-color: var(--accent); color: var(--accent); }
+        .btn-danger {
+            width: 100%; background: transparent; border: 1px solid rgba(239,68,68,0.3);
+            color: var(--warn); padding: 12px; border-radius: 12px;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer; margin-top: 8px;
+        }
+
+        /* Multi-select chips */
+        .multi-select { position: relative; }
+        .chip-list {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            margin-bottom: 8px; min-height: 28px;
+        }
+        .chip {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: var(--accent); color: #fff;
+            padding: 4px 10px; border-radius: 20px;
+            font-size: 0.75rem; font-weight: 600;
+        }
+        .chip .chip-x {
+            cursor: pointer; font-size: 0.85rem; line-height: 1;
+            opacity: 0.7; margin-left: 2px;
+        }
+        .chip .chip-x:active { opacity: 1; }
+        .log-types {
+            display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px;
+        }
+        .log-type-chip {
+            display: inline-block;
+            background: rgba(59,130,246,0.15); color: var(--accent);
+            padding: 2px 8px; border-radius: 10px;
+            font-size: 0.7rem; font-weight: 600;
+        }
+
+        /* Reminders */
+        .reminder-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 14px; background: var(--card-bg);
+            border: 1px solid var(--card-border); border-radius: 10px;
+            margin-bottom: 6px; font-size: 0.8rem;
+        }
+        .reminder-item .r-type { flex: 1; font-weight: 600; }
+        .reminder-item .r-interval { color: var(--text-dim); font-size: 0.7rem; }
+        .reminder-item .r-delete { color: var(--text-dim); cursor: pointer; padding: 4px; }
+        .reminder-item .r-delete:active { color: var(--warn); }
+
+        .empty-state {
+            text-align: center; padding: 40px 20px; color: var(--text-dim);
+        }
+        .empty-state .emoji { font-size: 3rem; margin-bottom: 12px; }
+        .empty-state .msg { font-size: 0.85rem; line-height: 1.5; }
+
+        .section-title {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--text-dim);
+            padding: 16px 0 8px;
+        }
+        .section-title:first-child { padding-top: 0; }
+
+        .footer {
+            padding: 12px 20px 20px; border-top: 1px solid var(--card-border);
+            display: flex; gap: 8px; align-items: center;
+        }
+        .footer .summary { flex: 1; font-size: 0.75rem; color: var(--text-dim); }
+        .btn-launcher {
+            background: transparent; border: 1px solid var(--card-border);
+            color: var(--text-dim); padding: 8px 16px; border-radius: 10px;
+            font-size: 0.8rem; font-weight: 600; cursor: pointer;
+            text-decoration: none; display: inline-block;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .btn-launcher:active { border-color: var(--accent); color: var(--accent); }
+
+        .hidden { display: none !important; }
+
+        .tab-bar {
+            display: flex; gap: 4px; margin-bottom: 16px;
+            background: var(--card-bg); border-radius: 10px; padding: 3px;
+        }
+        .tab {
+            flex: 1; text-align: center; padding: 8px; border-radius: 8px;
+            font-size: 0.75rem; font-weight: 600; cursor: pointer;
+            color: var(--text-dim); transition: background 0.15s, color 0.15s;
+        }
+        .tab.active { background: var(--accent); color: #fff; }
+    </style>
+</head>
+<body>
+
+<!-- MAIN LIST VIEW -->
+<div id="listView">
+    <div class="header">
+        <h1>🚗 Car Maintenance</h1>
+        <div class="header-actions">
+            <button class="btn-icon" id="addVehicleBtn" title="Add vehicle">＋</button>
+        </div>
+    </div>
+    <div class="content" id="vehicleList"></div>
+    <div class="footer">
+        <span class="summary" id="listSummary"></span>
+        <button class="btn-launcher" id="exportBtn" style="border:none;background:transparent;cursor:pointer">📤</button>
+        <button class="btn-launcher" id="importBtn" style="border:none;background:transparent;cursor:pointer">📥</button>
+        <a class="btn-launcher" href="/">🏠 Launcher</a>
+    </div>
+</div>
+
+<!-- VEHICLE DETAIL VIEW -->
+<div id="detailView" class="hidden">
+    <div class="header">
+        <div class="detail-header">
+            <button class="btn-back" id="backBtn">←</button>
+            <h2 id="detailTitle"></h2>
+            <button class="btn-icon" id="editVehicleBtn" title="Edit vehicle">✎</button>
+        </div>
+    </div>
+    <div class="content">
+        <div class="detail-meta" id="detailMeta"></div>
+        <div class="tab-bar">
+            <div class="tab active" data-tab="history">History</div>
+            <div class="tab" data-tab="reminders">Reminders</div>
+        </div>
+        <div id="tabHistory">
+            <div id="serviceLog"></div>
+            <button class="btn-primary" id="addServiceBtn" style="margin-top:12px">＋ Log Service</button>
+        </div>
+        <div id="tabReminders" class="hidden">
+            <div id="reminderList"></div>
+            <button class="btn-primary" id="addReminderBtn" style="margin-top:12px">＋ Add Reminder</button>
+        </div>
+    </div>
+</div>
+
+<!-- ADD/EDIT VEHICLE FORM -->
+<div id="vehicleFormView" class="hidden">
+    <div class="header">
+        <div class="detail-header">
+            <button class="btn-back" id="vehicleFormBackBtn">←</button>
+            <h2 id="vehicleFormTitle">Add Vehicle</h2>
+        </div>
+    </div>
+    <div class="content">
+        <div class="form-group"><label>Name / Nickname</label><input type="text" id="vfName" placeholder="e.g. Bill's Truck"></div>
+        <div class="form-row">
+            <div class="form-group"><label>Year</label><input type="text" id="vfYear" placeholder="2022" inputmode="numeric"></div>
+            <div class="form-group"><label>Make</label><input type="text" id="vfMake" placeholder="Toyota"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Model</label><input type="text" id="vfModel" placeholder="Tacoma"></div>
+            <div class="form-group"><label>License Plate</label><input type="text" id="vfPlate" placeholder="ABC-1234"></div>
+        </div>
+        <div class="form-group"><label>VIN (optional)</label><input type="text" id="vfVin" placeholder="Vehicle ID number"></div>
+        <div class="form-row">
+            <div class="form-group"><label>Current Odometer</label><input type="text" id="vfOdometer" placeholder="45000" inputmode="numeric"></div>
+            <div class="form-group"><label>Engine Hours</label><input type="text" id="vfEngineHours" placeholder="1200" inputmode="numeric"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Oil Type</label><input type="text" id="vfOil" placeholder="5W-30"></div>
+        </div>
+        <div class="form-group"><label>Notes</label><input type="text" id="vfNotes" placeholder="Tire size, filter type, etc."></div>
+        <button class="btn-primary" id="vehicleFormSaveBtn">Save Vehicle</button>
+        <button class="btn-danger hidden" id="vehicleFormDeleteBtn">Delete Vehicle</button>
+    </div>
+</div>
+
+<!-- ADD SERVICE FORM -->
+<div id="serviceFormView" class="hidden">
+    <div class="header">
+        <div class="detail-header">
+            <button class="btn-back" id="serviceFormBackBtn">←</button>
+            <h2>Log Service</h2>
+        </div>
+    </div>
+    <div class="content">
+        <div class="form-group"><label>Service Type(s)</label>
+            <div class="multi-select" id="sfTypeContainer">
+                <div class="chip-list" id="sfChipList"></div>
+                <select id="sfTypeDropdown" onchange="addServiceType(this.value); this.value='';">
+                    <option value="">+ Add service type...</option>
+                    <option value="Oil Change">Oil Change</option>
+                    <option value="Tire Rotation">Tire Rotation</option>
+                    <option value="Brake Pads">Brake Pads</option>
+                    <option value="Brake Rotors">Brake Rotors</option>
+                    <option value="Battery">Battery</option>
+                    <option value="Air Filter">Air Filter</option>
+                    <option value="Cabin Filter">Cabin Filter</option>
+                    <option value="Spark Plugs">Spark Plugs</option>
+                    <option value="Transmission Fluid">Transmission Fluid</option>
+                    <option value="Coolant Flush">Coolant Flush</option>
+                    <option value="Alignment">Alignment</option>
+                    <option value="State Inspection">State Inspection</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Date</label><input type="date" id="sfDate"></div>
+            <div class="form-group"><label>Odometer</label><input type="text" id="sfOdometer" placeholder="45000" inputmode="numeric"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Engine Hours</label><input type="text" id="sfEngineHours" placeholder="1200" inputmode="numeric"></div>
+            <div class="form-group"><label>Cost ($)</label><input type="text" id="sfCost" placeholder="0.00" inputmode="decimal"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Shop / Location</label><input type="text" id="sfShop" placeholder="e.g. Jiffy Lube"></div>
+        </div>
+        <div class="form-group"><label>Notes</label><input type="text" id="sfNotes" placeholder="Any details..."></div>
+        <button class="btn-primary" id="serviceFormSaveBtn">Save Service</button>
+    </div>
+</div>
+
+<!-- ADD REMINDER FORM -->
+<div id="reminderFormView" class="hidden">
+    <div class="header">
+        <div class="detail-header">
+            <button class="btn-back" id="reminderFormBackBtn">←</button>
+            <h2>Add Reminder</h2>
+        </div>
+    </div>
+    <div class="content">
+        <div class="form-group"><label>Service Type</label>
+            <select id="rfType">
+                <option value="Oil Change">Oil Change</option>
+                <option value="Tire Rotation">Tire Rotation</option>
+                <option value="Brake Pads">Brake Pads</option>
+                <option value="Brake Rotors">Brake Rotors</option>
+                <option value="Battery">Battery</option>
+                <option value="Air Filter">Air Filter</option>
+                <option value="Cabin Filter">Cabin Filter</option>
+                <option value="Spark Plugs">Spark Plugs</option>
+                <option value="Transmission Fluid">Transmission Fluid</option>
+                <option value="Coolant Flush">Coolant Flush</option>
+                <option value="Alignment">Alignment</option>
+                <option value="State Inspection">State Inspection</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Mileage Interval</label><input type="text" id="rfMileage" placeholder="5000" inputmode="numeric"></div>
+            <div class="form-group"><label>Month Interval</label><input type="text" id="rfMonths" placeholder="6" inputmode="numeric"></div>
+        </div>
+        <p style="font-size:0.7rem;color:var(--text-dim);margin-bottom:12px">Set one or both. Leave blank if not applicable.</p>
+        <button class="btn-primary" id="reminderFormSaveBtn">Save Reminder</button>
+    </div>
+</div>
+
+<script>
+const SERVICE_TYPES = [
+    'Oil Change','Tire Rotation','Brake Pads','Brake Rotors','Battery',
+    'Air Filter','Cabin Filter','Spark Plugs','Transmission Fluid',
+    'Coolant Flush','Alignment','State Inspection','Other'
+];
+
+let vehicles = [];
+let services = [];
+let reminders = [];
+let currentVehicleId = null;
+let editingServiceId = null;
+let editingReminderId = null;
+let editingVehicleId = null;
+let activeTab = 'history';
+
+function load() {
+    try { vehicles = JSON.parse(localStorage.getItem('cm-vehicles') || '[]'); } catch(e) { vehicles = []; }
+    try { services = JSON.parse(localStorage.getItem('cm-services') || '[]'); } catch(e) { services = []; }
+    try { reminders = JSON.parse(localStorage.getItem('cm-reminders') || '[]'); } catch(e) { reminders = []; }
+}
+
+function saveAll() {
+    localStorage.setItem('cm-vehicles', JSON.stringify(vehicles));
+    localStorage.setItem('cm-services', JSON.stringify(services));
+    localStorage.setItem('cm-reminders', JSON.stringify(reminders));
+}
+
+function exportData() {
+    const data = { vehicles, services, reminders, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'car-maintenance-backup.json';
+    a.click(); URL.revokeObjectURL(url);
+}
+
+function importData() {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = '.json';
+    input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                if (!data.vehicles || !data.services || !data.reminders) {
+                    alert('Invalid backup file.'); return;
+                }
+                if (!confirm(`Import ${data.vehicles.length} vehicles, ${data.services.length} services, ${data.reminders.length} reminders?\n\nThis will REPLACE all current data.`)) return;
+                vehicles = data.vehicles;
+                services = data.services;
+                reminders = data.reminders;
+                saveAll();
+                renderVehicleList();
+                alert('Import complete!');
+            } catch (err) { alert('Failed to parse backup file.'); }
+        };
+        reader.readAsText(file);
+    });
+    input.click();
+}
+
+function getVehicle(id) { return vehicles.find(v => v.id === id); }
+function getServices(vehicleId) { return services.filter(s => s.vehicleId === vehicleId).sort((a,b) => b.date.localeCompare(a.date)); }
+function getReminders(vehicleId) { return reminders.filter(r => r.vehicleId === vehicleId); }
+
+function getLastService(vehicleId, type) {
+    return services.filter(s => {
+        if (s.vehicleId !== vehicleId) return false;
+        const types = s.types || (s.type ? [s.type] : []);
+        return types.includes(type);
+    }).sort((a,b) => b.date.localeCompare(a.date))[0] || null;
+}
+
+function getDueStatus(vehicleId) {
+    const v = getVehicle(vehicleId);
+    if (!v) return { status: 'ok', items: [] };
+    const now = new Date();
+    const odometer = v.odometer || 0;
+    const dueItems = [];
+    for (const r of getReminders(vehicleId)) {
+        const last = getLastService(vehicleId, r.type);
+        let dueMiles = false, dueDate = false;
+        if (r.mileageInterval && last) {
+            dueMiles = (odometer - (last.odometer || 0)) >= r.mileageInterval;
+        }
+        if (r.monthInterval && last) {
+            const lastDate = new Date(last.date);
+            const dueDateObj = new Date(lastDate);
+            dueDateObj.setMonth(dueDateObj.getMonth() + r.monthInterval);
+            dueDate = now >= dueDateObj;
+        }
+        if (dueMiles || dueDate) {
+            dueItems.push({ type: r.type, reason: dueMiles ? 'mileage' : 'date' });
+        }
+    }
+    if (dueItems.length > 0) return { status: 'overdue', items: dueItems };
+    // Check for soon (within 30 days or 500 miles)
+    const soonItems = [];
+    for (const r of getReminders(vehicleId)) {
+        const last = getLastService(vehicleId, r.type);
+        if (!last) continue;
+        if (r.mileageInterval) {
+            const remaining = r.mileageInterval - (odometer - (last.odometer || 0));
+            if (remaining > 0 && remaining <= 500) soonItems.push({ type: r.type, reason: 'mileage' });
+        }
+        if (r.monthInterval) {
+            const lastDate = new Date(last.date);
+            const dueDateObj = new Date(lastDate);
+            dueDateObj.setMonth(dueDateObj.getMonth() + r.monthInterval);
+            const daysLeft = Math.ceil((dueDateObj - now) / (1000*60*60*24));
+            if (daysLeft > 0 && daysLeft <= 30) soonItems.push({ type: r.type, reason: 'date' });
+        }
+    }
+    if (soonItems.length > 0) return { status: 'soon', items: soonItems };
+    return { status: 'ok', items: [] };
+}
+
+// === RENDER ===
+function renderVehicleList() {
+    const el = document.getElementById('vehicleList');
+    const summary = document.getElementById('listSummary');
+    if (vehicles.length === 0) {
+        el.innerHTML = `<div class="empty-state"><div class="emoji">🚗</div><div class="msg">No vehicles yet.<br>Tap ＋ to add your first car.</div></div>`;
+        summary.textContent = '0 vehicles';
+        return;
+    }
+    summary.textContent = `${vehicles.length} vehicle${vehicles.length !== 1 ? 's' : ''}`;
+    el.innerHTML = vehicles.map(v => {
+        const due = getDueStatus(v.id);
+        let dueHTML = '';
+        if (due.status === 'overdue') {
+            dueHTML = `<div class="v-due overdue">⚠️ ${due.items.map(i=>i.type).join(', ')} due</div>`;
+        } else if (due.status === 'soon') {
+            dueHTML = `<div class="v-due soon">⏰ ${due.items.map(i=>i.type).join(', ')} soon</div>`;
+        } else {
+            dueHTML = `<div class="v-due ok">✓ All up to date</div>`;
+        }
+        const serviceCount = services.filter(s => s.vehicleId === v.id).length;
+        const totalCost = services.filter(s => s.vehicleId === v.id).reduce((sum, s) => sum + (s.cost || 0), 0);
+        return `<div class="vehicle-card" data-id="${v.id}">
+            <div class="v-name">${esc(v.name)}</div>
+            <div class="v-detail">${v.year} ${v.make} ${v.model}${v.plate ? ' · ' + v.plate : ''}</div>
+            <div class="v-meta">
+                <span>Odometer: <strong>${v.odometer ? v.odometer.toLocaleString() : '—'}</strong></span>
+                <span>Hours: <strong>${v.engineHours ? v.engineHours.toLocaleString() : '—'}</strong></span>
+                <span>Services: <strong>${serviceCount}</strong></span>
+            </div>
+            <div class="v-meta" style="margin-top:4px">
+                <span>Total Cost: <strong>$${totalCost.toFixed(2)}</strong></span>
+            </div>
+            ${dueHTML}
+        </div>`;
+    }).join('');
+
+    el.querySelectorAll('.vehicle-card').forEach(card => {
+        card.addEventListener('click', () => openVehicle(Number(card.dataset.id)));
+    });
+}
+
+function renderDetail() {
+    const v = getVehicle(currentVehicleId);
+    if (!v) return;
+    document.getElementById('detailTitle').textContent = v.name;
+    document.getElementById('detailMeta').innerHTML = `
+        ${v.year} ${v.make} ${v.model}<br>
+        Odometer: ${v.odometer ? v.odometer.toLocaleString() + ' mi' : '—'}
+        ${v.engineHours ? ' · Hours: ' + v.engineHours.toLocaleString() : ''}
+        ${v.plate ? ' · Plate: ' + v.plate : ''}
+        ${v.vin ? ' · VIN: ' + v.vin : ''}
+        ${v.oil ? ' · Oil: ' + v.oil : ''}
+        ${v.notes ? '<br>' + v.notes : ''}
+    `;
+    renderServiceLog();
+    renderReminders();
+}
+
+function renderServiceLog() {
+    const el = document.getElementById('serviceLog');
+    const svcs = getServices(currentVehicleId);
+    if (svcs.length === 0) {
+        el.innerHTML = `<div class="empty-state"><div class="emoji">🔧</div><div class="msg">No service records yet.</div></div>`;
+        return;
+    }
+    el.innerHTML = svcs.map(s => {
+        const d = new Date(s.date + 'T12:00:00');
+        const dateStr = d.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });
+        const types = s.types || (s.type ? [s.type] : ['Service']);
+        const typesHTML = types.map(t => `<span class="log-type-chip">${esc(t)}</span>`).join('');
+        return `<div class="log-entry">
+            <div class="log-types">${typesHTML}</div>
+            <div class="log-details">
+                ${dateStr} · ${s.odometer ? s.odometer.toLocaleString() + ' mi' : '—'}
+                ${s.engineHours ? ' · ' + s.engineHours.toLocaleString() + ' hrs' : ''}
+                ${s.shop ? ' · ' + esc(s.shop) : ''}
+                ${s.notes ? '<br>' + esc(s.notes) : ''}
+            </div>
+            ${s.cost ? `<div class="log-cost">$${parseFloat(s.cost).toFixed(2)}</div>` : ''}
+            <div class="log-actions">
+                <button class="btn-sm" data-edit="${s.id}">Edit</button>
+                <button class="btn-sm danger" data-delete="${s.id}">Delete</button>
+            </div>
+        </div>`;
+    }).join('');
+
+    el.querySelectorAll('[data-edit]').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); editService(Number(btn.dataset.edit)); });
+    });
+    el.querySelectorAll('[data-delete]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('Delete this service record?')) {
+                services = services.filter(s => s.id !== Number(btn.dataset.delete));
+                saveAll(); renderDetail(); renderVehicleList();
+            }
+        });
+    });
+}
+
+function renderReminders() {
+    const el = document.getElementById('reminderList');
+    const rems = getReminders(currentVehicleId);
+    if (rems.length === 0) {
+        el.innerHTML = `<div class="empty-state"><div class="emoji">⏰</div><div class="msg">No reminders set.<br>Add one to track due dates.</div></div>`;
+        return;
+    }
+    el.innerHTML = rems.map(r => {
+        const last = getLastService(currentVehicleId, r.type);
+        let status = '';
+        if (last) {
+            const v = getVehicle(currentVehicleId);
+            const odometer = v ? v.odometer : 0;
+            if (r.mileageInterval) {
+                const since = odometer - (last.odometer || 0);
+                const remaining = r.mileageInterval - since;
+                status += `<br>Mileage: ${since.toLocaleString()} / ${r.mileageInterval.toLocaleString()} mi (${remaining > 0 ? remaining.toLocaleString() + ' left' : 'OVERDUE'})`;
+            }
+            if (r.monthInterval) {
+                const lastDate = new Date(last.date + 'T12:00:00');
+                const dueDate = new Date(lastDate);
+                dueDate.setMonth(dueDate.getMonth() + r.monthInterval);
+                status += `<br>Last: ${lastDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} · Due: ${dueDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+            }
+        } else {
+            status = '<br>No service recorded yet';
+        }
+        return `<div class="reminder-item">
+            <span class="r-type">${esc(r.type)}</span>
+            <span class="r-interval">${r.mileageInterval ? 'Every ' + r.mileageInterval.toLocaleString() + ' mi' : ''}${r.mileageInterval && r.monthInterval ? ' / ' : ''}${r.monthInterval ? 'Every ' + r.monthInterval + ' mo' : ''}${status}</span>
+            <span class="r-delete" data-delete="${r.id}">✕</span>
+        </div>`;
+    }).join('');
+
+    el.querySelectorAll('[data-delete]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (confirm('Delete this reminder?')) {
+                reminders = reminders.filter(r => r.id !== Number(btn.dataset.delete));
+                saveAll(); renderReminders(); renderVehicleList();
+            }
+        });
+    });
+}
+
+// === NAVIGATION ===
+function showView(viewId) {
+    document.querySelectorAll('#listView, #detailView, #vehicleFormView, #serviceFormView, #reminderFormView').forEach(el => el.classList.add('hidden'));
+    document.getElementById(viewId).classList.remove('hidden');
+}
+
+function openVehicle(id) {
+    currentVehicleId = id;
+    activeTab = 'history';
+    showView('detailView');
+    renderDetail();
+    updateTabs();
+}
+
+function updateTabs() {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`[data-tab="${activeTab}"]`).classList.add('active');
+    document.getElementById('tabHistory').classList.toggle('hidden', activeTab !== 'history');
+    document.getElementById('tabReminders').classList.toggle('hidden', activeTab !== 'reminders');
+}
+
+// === VEHICLE FORM ===
+function showVehicleForm(vehicleId) {
+    editingVehicleId = vehicleId || null;
+    document.getElementById('vehicleFormTitle').textContent = vehicleId ? 'Edit Vehicle' : 'Add Vehicle';
+    document.getElementById('vehicleFormDeleteBtn').classList.toggle('hidden', !vehicleId);
+    if (vehicleId) {
+        const v = getVehicle(vehicleId);
+        document.getElementById('vfName').value = v.name || '';
+        document.getElementById('vfYear').value = v.year || '';
+        document.getElementById('vfMake').value = v.make || '';
+        document.getElementById('vfModel').value = v.model || '';
+        document.getElementById('vfPlate').value = v.plate || '';
+        document.getElementById('vfVin').value = v.vin || '';
+        document.getElementById('vfOdometer').value = v.odometer || '';
+        document.getElementById('vfEngineHours').value = v.engineHours || '';
+        document.getElementById('vfOil').value = v.oil || '';
+        document.getElementById('vfNotes').value = v.notes || '';
+    } else {
+        ['vfName','vfYear','vfMake','vfModel','vfPlate','vfVin','vfOdometer','vfEngineHours','vfOil','vfNotes'].forEach(id => document.getElementById(id).value = '');
+    }
+    showView('vehicleFormView');
+}
+
+function saveVehicle() {
+    const data = {
+        name: document.getElementById('vfName').value.trim(),
+        year: document.getElementById('vfYear').value.trim(),
+        make: document.getElementById('vfMake').value.trim(),
+        model: document.getElementById('vfModel').value.trim(),
+        plate: document.getElementById('vfPlate').value.trim(),
+        vin: document.getElementById('vfVin').value.trim(),
+        odometer: parseInt(document.getElementById('vfOdometer').value) || 0,
+        engineHours: parseInt(document.getElementById('vfEngineHours').value) || 0,
+        oil: document.getElementById('vfOil').value.trim(),
+        notes: document.getElementById('vfNotes').value.trim(),
+    };
+    if (!data.name) { alert('Please enter a vehicle name.'); return; }
+    if (editingVehicleId) {
+        const v = getVehicle(editingVehicleId);
+        if (v) { Object.assign(v, data); }
+    } else {
+        vehicles.push({ id: Date.now(), ...data });
+    }
+    saveAll();
+    showView('listView');
+    renderVehicleList();
+    if (currentVehicleId) { renderDetail(); }
+}
+
+function deleteVehicle() {
+    if (!editingVehicleId) return;
+    if (!confirm('Delete this vehicle and all its service records?')) return;
+    vehicles = vehicles.filter(v => v.id !== editingVehicleId);
+    services = services.filter(s => s.vehicleId !== editingVehicleId);
+    reminders = reminders.filter(r => r.vehicleId !== editingVehicleId);
+    saveAll();
+    currentVehicleId = null;
+    showView('listView');
+    renderVehicleList();
+}
+
+// === SERVICE FORM ===
+let sfSelectedTypes = [];
+
+function renderSFChips() {
+    const list = document.getElementById('sfChipList');
+    list.innerHTML = sfSelectedTypes.map((t, i) =>
+        `<span class="chip">${esc(t)}<span class="chip-x" data-idx="${i}">×</span></span>`
+    ).join('');
+    list.querySelectorAll('.chip-x').forEach(x => {
+        x.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sfSelectedTypes.splice(parseInt(x.dataset.idx), 1);
+            renderSFChips();
+        });
+    });
+}
+
+function addServiceType(type) {
+    if (!type) return;
+    if (!sfSelectedTypes.includes(type)) {
+        sfSelectedTypes.push(type);
+        renderSFChips();
+    }
+}
+
+function showServiceForm(serviceId) {
+    editingServiceId = serviceId || null;
+    sfSelectedTypes = [];
+    if (serviceId) {
+        const s = services.find(sv => sv.id === serviceId);
+        if (!s) return;
+        sfSelectedTypes = s.types || (s.type ? [s.type] : []);
+        document.getElementById('sfDate').value = s.date;
+        document.getElementById('sfOdometer').value = s.odometer || '';
+        document.getElementById('sfEngineHours').value = s.engineHours || '';
+        document.getElementById('sfCost').value = s.cost || '';
+        document.getElementById('sfShop').value = s.shop || '';
+        document.getElementById('sfNotes').value = s.notes || '';
+    } else {
+        document.getElementById('sfDate').value = new Date().toISOString().split('T')[0];
+        const v = getVehicle(currentVehicleId);
+        document.getElementById('sfOdometer').value = v ? v.odometer || '' : '';
+        document.getElementById('sfEngineHours').value = v ? v.engineHours || '' : '';
+        document.getElementById('sfCost').value = '';
+        document.getElementById('sfShop').value = '';
+        document.getElementById('sfNotes').value = '';
+    }
+    renderSFChips();
+    showView('serviceFormView');
+}
+
+function saveService() {
+    if (sfSelectedTypes.length === 0) { alert('Please select at least one service type.'); return; }
+    const data = {
+        types: [...sfSelectedTypes],
+        date: document.getElementById('sfDate').value,
+        odometer: parseInt(document.getElementById('sfOdometer').value) || 0,
+        engineHours: parseInt(document.getElementById('sfEngineHours').value) || 0,
+        cost: parseFloat(document.getElementById('sfCost').value) || 0,
+        shop: document.getElementById('sfShop').value.trim(),
+        notes: document.getElementById('sfNotes').value.trim(),
+    };
+    if (!data.date) { alert('Please enter a date.'); return; }
+    if (editingServiceId) {
+        const s = services.find(sv => sv.id === editingServiceId);
+        if (s) { Object.assign(s, data); }
+    } else {
+        services.push({ id: Date.now(), vehicleId: currentVehicleId, ...data });
+    }
+    // Update vehicle odometer/engine hours if this is the latest service
+    if (data.odometer) {
+        const v = getVehicle(currentVehicleId);
+        if (v && data.odometer > (v.odometer || 0)) {
+            v.odometer = data.odometer;
+        }
+    }
+    if (data.engineHours) {
+        const v = getVehicle(currentVehicleId);
+        if (v && data.engineHours > (v.engineHours || 0)) {
+            v.engineHours = data.engineHours;
+        }
+    }
+    saveAll();
+    showView('detailView');
+    renderDetail();
+    renderVehicleList();
+}
+
+function editService(id) {
+    currentVehicleId = services.find(s => s.id === id)?.vehicleId || currentVehicleId;
+    showServiceForm(id);
+}
+
+// === REMINDER FORM ===
+function showReminderForm(reminderId) {
+    editingReminderId = reminderId || null;
+    if (reminderId) {
+        const r = reminders.find(rm => rm.id === reminderId);
+        if (!r) return;
+        document.getElementById('rfType').value = r.type;
+        document.getElementById('rfMileage').value = r.mileageInterval || '';
+        document.getElementById('rfMonths').value = r.monthInterval || '';
+    } else {
+        document.getElementById('rfType').value = 'Oil Change';
+        document.getElementById('rfMileage').value = '';
+        document.getElementById('rfMonths').value = '';
+    }
+    showView('reminderFormView');
+}
+
+function saveReminder() {
+    const data = {
+        type: document.getElementById('rfType').value,
+        mileageInterval: parseInt(document.getElementById('rfMileage').value) || 0,
+        monthInterval: parseInt(document.getElementById('rfMonths').value) || 0,
+    };
+    if (!data.mileageInterval && !data.monthInterval) { alert('Please set at least one interval.'); return; }
+    if (editingReminderId) {
+        const r = reminders.find(rm => rm.id === editingReminderId);
+        if (r) { Object.assign(r, data); }
+    } else {
+        reminders.push({ id: Date.now(), vehicleId: currentVehicleId, ...data });
+    }
+    saveAll();
+    showView('detailView');
+    renderReminders();
+    renderVehicleList();
+}
+
+function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+// === EVENT BINDINGS ===
+document.getElementById('addVehicleBtn').addEventListener('click', () => showVehicleForm(null));
+document.getElementById('backBtn').addEventListener('click', () => { showView('listView'); renderVehicleList(); });
+document.getElementById('editVehicleBtn').addEventListener('click', () => showVehicleForm(currentVehicleId));
+document.getElementById('vehicleFormBackBtn').addEventListener('click', () => {
+    showView(editingVehicleId ? 'detailView' : 'listView');
+    if (editingVehicleId) renderDetail();
+    else renderVehicleList();
+});
+document.getElementById('vehicleFormSaveBtn').addEventListener('click', saveVehicle);
+document.getElementById('vehicleFormDeleteBtn').addEventListener('click', deleteVehicle);
+
+document.getElementById('addServiceBtn').addEventListener('click', () => showServiceForm(null));
+document.getElementById('serviceFormBackBtn').addEventListener('click', () => { showView('detailView'); renderDetail(); });
+document.getElementById('serviceFormSaveBtn').addEventListener('click', saveService);
+
+document.getElementById('addReminderBtn').addEventListener('click', () => showReminderForm(null));
+document.getElementById('reminderFormBackBtn').addEventListener('click', () => { showView('detailView'); renderReminders(); });
+document.getElementById('reminderFormSaveBtn').addEventListener('click', saveReminder);
+
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        activeTab = tab.dataset.tab;
+        updateTabs();
+    });
+});
+
+// Init
+load();
+renderVehicleList();
+
+document.getElementById('exportBtn').addEventListener('click', exportData);
+document.getElementById('importBtn').addEventListener('click', importData);
+</script>
+</body>
+</html>
