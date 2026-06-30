@@ -518,7 +518,7 @@ body::before {
   <br>
   <button class="action-btn primary" id="reset-game" style="width:100%">🔄 New Game</button>
   <br><br>
-  <a class="action-btn" href="../" style="width:100%;display:block;text-align:center;text-decoration:none">← Back to Games</a>
+  <a class="action-btn" href="../" style="width:100%;display:block;text-align:center;text-decoration:none">← Back to Launcher</a>
 </div>
 
 <div class="dealer-area">
@@ -581,6 +581,7 @@ const SUITS = ['♠','♥','♦','♣'];
 const SUIT_COLORS = { '♠':'black', '♥':'red', '♦':'red', '♣':'black' };
 const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
 const RANK_ORDER = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'A':14 };
+const RANK_NAMES = { 2:'2',3:'3',4:'4',5:'5',6:'6',7:'7',8:'8',9:'9',10:'10',11:'J',12:'Q',13:'K',14:'A' };
 
 // ── Game State ──
 let state = {
@@ -896,32 +897,35 @@ function getPreflopStrategy(cards) {
   const pair = cards[0].rank === cards[1].rank;
   const high = Math.max(r1, r2);
   const low = Math.min(r1, r2);
+  const highName = RANK_NAMES[high];
+  const lowName = RANK_NAMES[low];
+  const handDesc = pair ? `pocket ${highName}s` : `${highName}${lowName}${suited ? ' suited' : ' offsuit'}`;
   
   // Premium pairs: always raise 4x
-  if (pair && high >= 10) return 'raise';
+  if (pair && high >= 10) return { action: 'raise', reason: `Premium pair (${highName}s) — raise 4x for max value` };
   // Medium pairs: raise 4x
-  if (pair && high >= 7) return 'raise';
+  if (pair && high >= 7) return { action: 'raise', reason: `Medium pair (${highName}s) — raise 4x, strong preflop` };
   // Small pairs: bet 2x
-  if (pair) return 'bet';
+  if (pair) return { action: 'bet', reason: `Small pair (${highName}s) — bet 2x, set-mining potential` };
   
   // Premium unpaired
-  if (high >= 13 && low >= 12) return 'raise'; // AK, AQ, AJ, KQ
-  if (high === 14 && low >= 10 && suited) return 'raise'; // ATs+
-  if (high >= 12 && low >= 11 && suited) return 'raise'; // KQs, KJs, QJs
+  if (high >= 13 && low >= 12) return { action: 'raise', reason: `Premium ${handDesc} — raise 4x, top of range` };
+  if (high === 14 && low >= 10 && suited) return { action: 'raise', reason: `${handDesc} — suited ace with good kicker, raise 4x` };
+  if (high >= 12 && low >= 11 && suited) return { action: 'raise', reason: `${handDesc} — suited broadway, raise 4x` };
   
   // Strong hands: bet 2x
-  if (high === 14 && low >= 8) return 'bet'; // A8+
-  if (high >= 12 && low >= 10) return 'bet'; // KT+, QT+, JT
-  if (high >= 10 && low >= 9 && suited) return 'bet'; // T9s+
-  if (high === 14 && suited) return 'bet'; // Any suited ace
+  if (high === 14 && low >= 8) return { action: 'bet', reason: `${handDesc} — ace with decent kicker, bet 2x` };
+  if (high >= 12 && low >= 10) return { action: 'bet', reason: `${handDesc} — two broadway cards, bet 2x` };
+  if (high >= 10 && low >= 9 && suited) return { action: 'bet', reason: `${handDesc} — suited connector, bet 2x` };
+  if (high === 14 && suited) return { action: 'bet', reason: `${handDesc} — any suited ace, bet 2x` };
   
   // Playable: check
-  if (high >= 10 && low >= 8) return 'check'; // T8+
-  if (suited && high >= 9 && low >= 7) return 'check'; // 97s+
-  if (high >= 12) return 'check'; // Any K or Q
+  if (high >= 10 && low >= 8) return { action: 'check', reason: `${handDesc} — playable but not strong enough to bet` };
+  if (suited && high >= 9 && low >= 7) return { action: 'check', reason: `${handDesc} — suited semi-connector, worth seeing a flop` };
+  if (high >= 12) return { action: 'check', reason: `${handDesc} — king/queen-high, check and see` };
   
   // Fold everything else
-  return 'fold';
+  return { action: 'fold', reason: `${handDesc} — too weak, fold and save your money` };
 }
 
 function getPostflopStrategy(playerCards, communityCards) {
@@ -929,24 +933,24 @@ function getPostflopStrategy(playerCards, communityCards) {
   const hand = evaluateHand(allCards);
   
   // Strong made hands: raise
-  if (hand.rank >= 5) return 'raise'; // Flush or better
-  if (hand.rank === 4 && hand.value >= 10) return 'raise'; // Strong straight
-  if (hand.rank === 3 && hand.value >= 10) return 'raise'; // Strong trips
+  if (hand.rank >= 5) return { action: 'raise', reason: `${hand.name} — monster hand, raise 4x for max value` };
+  if (hand.rank === 4 && hand.value >= 10) return { action: 'raise', reason: `Strong straight (${hand.name}) — raise 4x` };
+  if (hand.rank === 3 && hand.value >= 10) return { action: 'raise', reason: `Strong trips (${hand.name}) — raise 4x` };
   
   // Medium hands: bet
-  if (hand.rank >= 3) return 'bet'; // Trips
-  if (hand.rank === 2 && hand.value > 100000) return 'bet'; // Strong two pair (high pairs)
-  if (hand.rank === 1 && hand.value >= 12) return 'bet'; // Top pair good kicker
+  if (hand.rank >= 3) return { action: 'bet', reason: `${hand.name} — bet 2x, you're ahead of most hands` };
+  if (hand.rank === 2 && hand.value > 100000) return { action: 'bet', reason: `Strong two pair (${hand.name}) — bet 2x` };
+  if (hand.rank === 1 && hand.value >= 12) return { action: 'bet', reason: `Top pair with good kicker (${hand.name}) — bet 2x` };
   
   // Weak made hands: check
-  if (hand.rank >= 1) return 'check'; // Any pair
-  if (hand.rank === 0 && hand.value >= 12) return 'check'; // High card A/K
+  if (hand.rank >= 1) return { action: 'check', reason: `${hand.name} — weak made hand, check and see next card` };
+  if (hand.rank === 0 && hand.value >= 12) return { action: 'check', reason: `High card ${hand.name} — check, you might improve` };
   
   // Draw potential: check
   const hasDraw = checkDrawPotential(playerCards, communityCards);
-  if (hasDraw) return 'check';
+  if (hasDraw) return { action: 'check', reason: `Drawing hand — check, you have outs to improve` };
   
-  return 'fold';
+  return { action: 'fold', reason: `${hand.name} with no draw — fold, nothing to fight with` };
 }
 
 function checkDrawPotential(playerCards, communityCards) {
@@ -970,6 +974,16 @@ function getCorrectAction() {
     return getPreflopStrategy(state.playerCards);
   }
   return getPostflopStrategy(state.playerCards, state.communityCards);
+}
+
+function getCorrectActionName() {
+  const result = getCorrectAction();
+  return typeof result === 'string' ? result : result.action;
+}
+
+function getCorrectReason() {
+  const result = getCorrectAction();
+  return typeof result === 'string' ? '' : (result.reason || '');
 }
 
 // ── Render ──
@@ -1154,16 +1168,18 @@ function startRound() {
 }
 
 function showCheatHint() {
-  const correctAction = getCorrectAction();
+  const correctAction = getCorrectActionName();
+  const reason = getCorrectReason();
   const actionNames = { check:'Check', bet:'Bet 2x', raise:'Raise 4x', fold:'Fold' };
-  strategyHintEl.textContent = `💡 Hint: ${actionNames[correctAction]}`;
+  strategyHintEl.textContent = `💡 Hint: ${actionNames[correctAction]}${reason ? ' — ' + reason : ''}`;
 }
 
 function playerAction(action) {
   if (!['preflop', 'flop', 'turn', 'river'].includes(state.phase)) return;
   
   // Check strategy
-  const correctAction = getCorrectAction();
+  const correctAction = getCorrectActionName();
+  const reason = getCorrectReason();
   const wasCorrect = action === correctAction;
   
   state.lastDecision = { action, correctAction, wasCorrect, phase: state.phase };
@@ -1176,7 +1192,7 @@ function playerAction(action) {
   state.stats.total++;
   
   // Show feedback
-  showFeedback(wasCorrect, correctAction, action);
+  showFeedback(wasCorrect, correctAction, action, reason);
   
   // Execute action
   switch (action) {
@@ -1327,7 +1343,7 @@ function resetForNextRound() {
 }
 
 // ── Feedback ──
-function showFeedback(wasCorrect, correctAction, action) {
+function showFeedback(wasCorrect, correctAction, action, reason) {
   const actionNames = {
     'check': 'Check',
     'bet': 'Bet 2x',
@@ -1336,10 +1352,10 @@ function showFeedback(wasCorrect, correctAction, action) {
   };
   
   if (wasCorrect) {
-    strategyHintEl.textContent = `✅ Correct! ${actionNames[action]} is the right play.`;
+    strategyHintEl.innerHTML = `✅ Correct! ${actionNames[action]} is the right play.${reason ? '<br><span style="font-size:0.8em;opacity:0.85">' + reason + '</span>' : ''}`;
     strategyHintEl.style.color = '#5dfc8e';
   } else {
-    strategyHintEl.textContent = `❌ Wrong! You chose ${actionNames[action]}, but should ${actionNames[correctAction]}.`;
+    strategyHintEl.innerHTML = `❌ Wrong! You chose ${actionNames[action]}, but should ${actionNames[correctAction]}.${reason ? '<br><span style="font-size:0.8em;opacity:0.85">' + reason + '</span>' : ''}`;
     strategyHintEl.style.color = '#ff8a80';
   }
   
