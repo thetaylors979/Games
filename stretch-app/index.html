@@ -205,11 +205,34 @@ function playPhaseChange() { playBeep(523,0.15,'sine',0.2); setTimeout(()=>playB
 function playStretchStart() { playBeep(440,0.15,'sine',0.25); setTimeout(()=>playBeep(554,0.15,'sine',0.25),150); setTimeout(()=>playBeep(659,0.2,'sine',0.3),300); }
 function playComplete() { [523,659,784,1047].forEach((n,i)=>setTimeout(()=>playBeep(n,0.3,'sine',0.2),i*200)); }
 
+// Voice selection — use Samantha (most natural on iOS & macOS)
+let preferredVoice = null;
+function selectVoice() {
+    if (!('speechSynthesis' in window)) return;
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length === 0) return;
+    let match = voices.find(v => v.name === 'Samantha');
+    if (!match) match = voices.find(v => v.name.includes('Samantha'));
+    if (match) { preferredVoice = match; return; }
+    const prefs = ['Karen', 'Daniel', 'Moira', 'Tessa', 'Fiona', 'Alex', 'Tom', 'Ava'];
+    for (const pref of prefs) {
+        const m = voices.find(v => v.name.includes(pref) && v.lang.startsWith('en'));
+        if (m) { preferredVoice = m; return; }
+    }
+    const enVoice = voices.find(v => v.lang.startsWith('en'));
+    if (enVoice) preferredVoice = enVoice;
+}
+if ('speechSynthesis' in window) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = selectVoice;
+}
+
 function speak(text) {
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
-        u.rate = 1.1; u.volume = 0.8;
+        u.rate = 1.0; u.volume = 0.9;
+        if (preferredVoice) u.voice = preferredVoice;
         window.speechSynthesis.speak(u);
     }
 }
@@ -246,6 +269,7 @@ function updateStartScreen() {
 }
 
 let state = 'idle', currentStretchIdx = 0, currentPhase = '', phaseTimeRemaining = 0, totalTimer = null, startTime = 0;
+let wakeLock = null;  // Screen Wake Lock — keeps screen on during routine
 const $ = id => document.getElementById(id);
 
 function updateUI() {
@@ -325,10 +349,22 @@ function tick() {
     updateUI();
 }
 
+async function requestWakeLock() {
+    try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch (e) { /* Wake Lock not supported — screen may sleep */ }
+}
+
+function releaseWakeLock() {
+    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+}
+
 function startRoutine() {
     initAudio(); state = 'running'; currentStretchIdx = 0;
     currentPhase = 'get-ready'; phaseTimeRemaining = GET_READY;
     startTime = Date.now();
+    requestWakeLock();
     $('startScreen').classList.add('hidden');
     $('timerScreen').classList.remove('hidden');
     $('completeScreen').classList.add('hidden');
@@ -342,12 +378,14 @@ function startRoutine() {
 
 function pauseRoutine() {
     if (state !== 'running') return; state = 'paused'; clearInterval(totalTimer);
+    releaseWakeLock();
     $('pauseBtn').classList.add('hidden'); $('resumeBtn').classList.remove('hidden');
     window.speechSynthesis.cancel();
 }
 
 function resumeRoutine() {
     if (state !== 'paused') return; state = 'running';
+    requestWakeLock();
     $('pauseBtn').classList.remove('hidden'); $('resumeBtn').classList.add('hidden');
     totalTimer = setInterval(tick, 1000);
 }
@@ -383,14 +421,14 @@ function skipStretch() {
 }
 
 function stopRoutine() {
-    state = 'idle'; clearInterval(totalTimer); window.speechSynthesis.cancel();
+    state = 'idle'; clearInterval(totalTimer); releaseWakeLock(); window.speechSynthesis.cancel();
     $('startScreen').classList.remove('hidden');
     $('timerScreen').classList.add('hidden');
     $('completeScreen').classList.add('hidden');
 }
 
 function finishRoutine() {
-    state = 'idle'; clearInterval(totalTimer); window.speechSynthesis.cancel();
+    state = 'idle'; clearInterval(totalTimer); releaseWakeLock(); window.speechSynthesis.cancel();
     const elapsed = Math.round((Date.now() - startTime) / 1000);
     const mins = Math.floor(elapsed / 60), secs = elapsed % 60;
     $('timerScreen').classList.add('hidden');

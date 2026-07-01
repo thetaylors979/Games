@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Grocery List</title>
+    <style>
+        :root {
+            --bg: #0f0f11;
+            --card-bg: #1a1a1f;
+            --card-border: #2a2a30;
+            --text: #e8e8ec;
+            --text-dim: #8a8a94;
+            --accent: #22c55e;
+            --accent-glow: rgba(34, 197, 94, 0.12);
+            --warn: #ef4444;
+            --cat-produce: #22c55e;
+            --cat-dairy: #fbbf24;
+            --cat-meat: #ef4444;
+            --cat-pantry: #a78bfa;
+            --cat-frozen: #38bdf8;
+            --cat-bakery: #fb923c;
+            --cat-other: #94a3b8;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh; min-height: 100dvh;
+            display: flex; flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none; -webkit-user-select: none;
+        }
+        .header {
+            padding: 16px 20px 8px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; background: var(--bg); z-index: 10;
+        }
+        .header h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; }
+        .header-actions { display: flex; gap: 8px; }
+        .btn-icon {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            color: var(--text-dim); width: 36px; height: 36px; border-radius: 10px;
+            font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .btn-icon:active { border-color: var(--accent); color: var(--accent); }
+        .btn-icon.danger:active { border-color: var(--warn); color: var(--warn); }
+
+        .add-bar {
+            padding: 0 20px 12px;
+            display: flex; gap: 8px;
+        }
+        .add-bar input {
+            flex: 1; background: var(--card-bg); border: 1px solid var(--card-border);
+            color: var(--text); padding: 12px 14px; border-radius: 12px;
+            font-size: 0.95rem; outline: none; transition: border-color 0.15s;
+        }
+        .add-bar input:focus { border-color: var(--accent); }
+        .add-bar input::placeholder { color: var(--text-dim); }
+        .add-bar select {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            color: var(--text); padding: 12px 8px; border-radius: 12px;
+            font-size: 0.85rem; outline: none; max-width: 110px;
+            -webkit-appearance: none; appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%238a8a94' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 8px center;
+            padding-right: 28px;
+        }
+        .btn-add {
+            background: var(--accent); color: #000; border: none;
+            padding: 12px 18px; border-radius: 12px; font-size: 0.95rem;
+            font-weight: 700; cursor: pointer; white-space: nowrap;
+            transition: transform 0.1s, opacity 0.15s;
+        }
+        .btn-add:active { transform: scale(0.95); }
+
+        .list-area {
+            flex: 1; overflow-y: auto; padding: 0 20px 16px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .category-group { margin-bottom: 16px; }
+        .category-header {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; padding: 8px 4px 6px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .cat-dot.produce { background: var(--cat-produce); }
+        .cat-dot.dairy { background: var(--cat-dairy); }
+        .cat-dot.meat { background: var(--cat-meat); }
+        .cat-dot.pantry { background: var(--cat-pantry); }
+        .cat-dot.frozen { background: var(--cat-frozen); }
+        .cat-dot.bakery { background: var(--cat-bakery); }
+        .cat-dot.other { background: var(--cat-other); }
+        .cat-count { color: var(--text-dim); font-weight: 400; margin-left: auto; }
+
+        .item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 14px; background: var(--card-bg);
+            border: 1px solid var(--card-border); border-radius: 12px;
+            margin-bottom: 6px; transition: opacity 0.2s, border-color 0.15s;
+        }
+        .item.checked { opacity: 0.4; }
+        .item.checked .item-name { text-decoration: line-through; }
+        .item-check {
+            width: 22px; height: 22px; border: 2px solid var(--card-border);
+            border-radius: 50%; flex-shrink: 0; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .item.checked .item-check {
+            background: var(--accent); border-color: var(--accent);
+        }
+        .item.checked .item-check::after {
+            content: '✓'; color: #000; font-size: 0.7rem; font-weight: 800;
+        }
+        .item-name { flex: 1; font-size: 0.95rem; }
+        .item-delete {
+            color: var(--text-dim); font-size: 0.85rem; cursor: pointer;
+            padding: 4px 8px; border-radius: 6px; transition: color 0.15s;
+        }
+        .item-delete:active { color: var(--warn); }
+
+        .empty-state {
+            text-align: center; padding: 40px 20px; color: var(--text-dim);
+        }
+        .empty-state .emoji { font-size: 3rem; margin-bottom: 12px; }
+        .empty-state .msg { font-size: 0.9rem; line-height: 1.5; }
+
+        .footer {
+            padding: 12px 20px 20px; border-top: 1px solid var(--card-border);
+            display: flex; gap: 8px; align-items: center;
+        }
+        .footer .summary { flex: 1; font-size: 0.75rem; color: var(--text-dim); }
+        .btn-clear {
+            background: transparent; border: 1px solid var(--card-border);
+            color: var(--text-dim); padding: 8px 16px; border-radius: 10px;
+            font-size: 0.8rem; font-weight: 600; cursor: pointer;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .btn-clear:active { border-color: var(--warn); color: var(--warn); }
+        .btn-launcher {
+            background: transparent; border: 1px solid var(--card-border);
+            color: var(--text-dim); padding: 8px 16px; border-radius: 10px;
+            font-size: 0.8rem; font-weight: 600; cursor: pointer;
+            text-decoration: none; display: inline-block;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .btn-launcher:active { border-color: var(--accent); color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🛒 Grocery List</h1>
+    <div class="header-actions">
+        <button class="btn-icon" id="sortBtn" title="Sort">🔤</button>
+        <button class="btn-icon danger" id="clearAllBtn" title="Clear all">🗑</button>
+    </div>
+</div>
+
+<div class="add-bar">
+    <input type="text" id="itemInput" placeholder="Add item..." autocomplete="off" enterkeyhint="done">
+    <select id="catSelect">
+        <option value="produce">🥬 Produce</option>
+        <option value="dairy">🥛 Dairy</option>
+        <option value="meat">🥩 Meat</option>
+        <option value="pantry">🥫 Pantry</option>
+        <option value="frozen">❄️ Frozen</option>
+        <option value="bakery">🍞 Bakery</option>
+        <option value="other">📦 Other</option>
+    </select>
+    <button class="btn-add" id="addBtn">Add</button>
+</div>
+
+<div class="list-area" id="listArea">
+    <div class="empty-state" id="emptyState">
+        <div class="emoji">🛒</div>
+        <div class="msg">Your list is empty.<br>Add some items above!</div>
+    </div>
+</div>
+
+<div class="footer">
+    <span class="summary" id="summary">0 items</span>
+    <button class="btn-clear" id="clearCheckedBtn">Clear Checked</button>
+    <a class="btn-launcher" href="../">🏠 Games</a>
+</div>
+
+<script>
+const CATEGORIES = ['produce', 'dairy', 'meat', 'pantry', 'frozen', 'bakery', 'other'];
+const CAT_EMOJI = { produce:'🥬', dairy:'🥛', meat:'🥩', pantry:'🥫', frozen:'❄️', bakery:'🍞', other:'📦' };
+const CAT_LABEL = { produce:'Produce', dairy:'Dairy', meat:'Meat', pantry:'Pantry', frozen:'Frozen', bakery:'Bakery', other:'Other' };
+
+let items = [];
+let sortAlpha = false;
+
+function load() {
+    try { items = JSON.parse(localStorage.getItem('grocery-list') || '[]'); }
+    catch(e) { items = []; }
+    try { sortAlpha = JSON.parse(localStorage.getItem('grocery-list-sort') || 'false'); }
+    catch(e) { sortAlpha = false; }
+    updateSortBtn();
+}
+
+function save() { localStorage.setItem('grocery-list', JSON.stringify(items)); }
+
+function addItem(name, category) {
+    name = name.trim();
+    if (!name) return;
+    items.push({ id: Date.now(), name, category, checked: false });
+    save();
+    render();
+}
+
+function toggleItem(id) {
+    const item = items.find(i => i.id === id);
+    if (item) { item.checked = !item.checked; save(); render(); }
+}
+
+function deleteItem(id) {
+    items = items.filter(i => i.id !== id);
+    save();
+    render();
+}
+
+function clearChecked() {
+    items = items.filter(i => !i.checked);
+    save();
+    render();
+}
+
+function clearAll() {
+    if (!items.length) return;
+    if (confirm('Delete all items?')) {
+        items = [];
+        save();
+        render();
+    }
+}
+
+function toggleSort() {
+    sortAlpha = !sortAlpha;
+    localStorage.setItem('grocery-list-sort', JSON.stringify(sortAlpha));
+    updateSortBtn();
+    render();
+}
+
+function updateSortBtn() {
+    document.getElementById('sortBtn').textContent = sortAlpha ? '📋' : '🔤';
+    document.getElementById('sortBtn').title = sortAlpha ? 'Category sort' : 'Alphabetical sort';
+}
+
+function getSortedItems() {
+    const sorted = [...items];
+    if (sortAlpha) {
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+        const catOrder = {};
+        CATEGORIES.forEach((c, i) => catOrder[c] = i);
+        sorted.sort((a, b) => {
+            if (a.checked !== b.checked) return a.checked ? 1 : -1;
+            const c = (catOrder[a.category] ?? 99) - (catOrder[b.category] ?? 99);
+            return c !== 0 ? c : a.name.localeCompare(b.name);
+        });
+    }
+    return sorted;
+}
+
+function render() {
+    const area = document.getElementById('listArea');
+    const empty = document.getElementById('emptyState');
+    const summary = document.getElementById('summary');
+
+    const total = items.length;
+    const checked = items.filter(i => i.checked).length;
+    summary.textContent = total === 0 ? '0 items' : `${total} item${total !== 1 ? 's' : ''} · ${checked} checked`;
+
+    if (total === 0) {
+        area.innerHTML = '';
+        area.appendChild(empty);
+        return;
+    }
+
+    const sorted = getSortedItems();
+
+    if (sortAlpha) {
+        // Simple flat list, alphabetical
+        area.innerHTML = sorted.map(item => itemHTML(item)).join('');
+    } else {
+        // Grouped by category
+        let html = '';
+        for (const cat of CATEGORIES) {
+            const catItems = sorted.filter(i => i.category === cat);
+            if (catItems.length === 0) continue;
+            const unchecked = catItems.filter(i => !i.checked).length;
+            html += `<div class="category-group">
+                <div class="category-header">
+                    <span class="cat-dot ${cat}"></span>
+                    ${CAT_EMOJI[cat]} ${CAT_LABEL[cat]}
+                    <span class="cat-count">${unchecked} left</span>
+                </div>
+                ${catItems.map(item => itemHTML(item)).join('')}
+            </div>`;
+        }
+        area.innerHTML = html;
+    }
+
+    // Re-bind events
+    area.querySelectorAll('.item-check').forEach(el => {
+        el.addEventListener('click', () => toggleItem(Number(el.dataset.id)));
+    });
+    area.querySelectorAll('.item-delete').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteItem(Number(el.dataset.id));
+        });
+    });
+}
+
+function itemHTML(item) {
+    return `<div class="item${item.checked ? ' checked' : ''}">
+        <div class="item-check" data-id="${item.id}"></div>
+        <span class="item-name">${esc(item.name)}</span>
+        <span class="item-delete" data-id="${item.id}">✕</span>
+    </div>`;
+}
+
+function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+// Init
+load();
+render();
+
+document.getElementById('addBtn').addEventListener('click', () => {
+    const input = document.getElementById('itemInput');
+    const cat = document.getElementById('catSelect');
+    addItem(input.value, cat.value);
+    input.value = '';
+    input.focus();
+});
+
+document.getElementById('itemInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        const cat = document.getElementById('catSelect');
+        addItem(e.target.value, cat.value);
+        e.target.value = '';
+    }
+});
+
+document.getElementById('clearCheckedBtn').addEventListener('click', clearChecked);
+document.getElementById('clearAllBtn').addEventListener('click', clearAll);
+document.getElementById('sortBtn').addEventListener('click', toggleSort);
+</script>
+</body>
+</html>

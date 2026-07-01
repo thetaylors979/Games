@@ -91,7 +91,7 @@
 <div id="startScreen" class="start-screen main">
     <div class="title">💪 Vibration Plate Routine</div>
     <div class="subtitle" id="startSubtitle">
-        20 exercises · ~25 min<br>
+        27 exercises · ~35 min<br>
         4 sections: Warm-Up → Strength → Balance → Cool Down
     </div>
     <button class="btn btn-start" id="startBtn">Start Routine</button>
@@ -130,7 +130,7 @@
 </div>
 
 <script>
-// 20 vibration plate exercises in 4 sections
+// Vibration plate exercises with real photos — includes L/R side variations
 const SECTIONS = [
     {
         name: "WARM UP & ACTIVATION",
@@ -145,35 +145,41 @@ const SECTIONS = [
     },
     {
         name: "STRENGTH & TONING",
-        duration: "10 min",
+        duration: "~14 min",
         exercises: [
             { name: "Squats", img: 'images/06-squats.jpg', duration: 120, instructions: "Push hip back and down. Keep chest lifted." },
-            { name: "Lunges", img: 'images/07-lunges.jpg', duration: 120, instructions: "Step back into a lunge. Alternate legs." },
+            { name: "Lunges", img: 'images/07-lunges-r.jpg', duration: 120, instructions: "Step back into a lunge. Alternate legs." },
             { name: "Push Ups", img: 'images/08-push-ups.jpg', duration: 120, instructions: "Hands on plate, body straight. Engage core and chest." },
-            { name: "Side Plank", img: 'images/09-side-plank.jpg', duration: 120, instructions: "Elbow on plate, lift hips. Hold and switch sides." },
+            { name: "Side Plank (L)", img: 'images/09-side-plank-l.jpg', duration: 60, instructions: "Left elbow on plate, lift hips. Hold steady." },
+            { name: "Side Plank (R)", img: 'images/11-side-plank-r.jpg', duration: 60, instructions: "Right elbow on plate, lift hips. Hold steady." },
             { name: "Glute Bridge", img: 'images/10-glute-bridge.jpg', duration: 120, instructions: "Feet on plate, lift hips up. Squeeze your glutes." },
         ]
     },
     {
         name: "BALANCE & STABILITY",
-        duration: "5-7 min",
+        duration: "~8 min",
         exercises: [
-            { name: "Single Leg Stand", img: 'images/11-single-leg-stand.jpg', duration: 60, instructions: "Soft knee, engage core. Switch sides." },
-            { name: "Squat Hold", img: 'images/12-squat-hold.jpg', duration: 60, instructions: "Hold a squat position. Stay steady." },
-            { name: "Bird Dog", img: 'images/13-bird-dog.jpg', duration: 60, instructions: "Extend opposite arm and leg. Switch sides." },
-            { name: "Side Step Up", img: 'images/14-side-step-up.jpg', duration: 60, instructions: "Step up and over. Switch sides." },
-            { name: "Knee Lift Balance", img: 'images/15-knee-lift-balance.jpg', duration: 60, instructions: "Lift knee and hold. Switch sides." },
+            { name: "Single Leg Stand (R)", img: 'images/12-single-leg-stand-r.jpg', duration: 60, instructions: "Balance on right leg. Soft knee, engage core." },
+            { name: "Single Leg Stand (L)", img: 'images/23-single-leg-stand-l.jpg', duration: 60, instructions: "Balance on left leg. Soft knee, engage core." },
+            { name: "Squat Hold", img: 'images/13-squat-hold.jpg', duration: 60, instructions: "Hold a squat position. Stay steady." },
+            { name: "Bird Dog", img: 'images/14-bird-dog.jpg', duration: 60, instructions: "Extend opposite arm and leg. Switch sides." },
+            { name: "Side Step Up (R)", img: 'images/15-side-step-up-r.jpg', duration: 60, instructions: "Step up leading with right leg." },
+            { name: "Side Step Up (L)", img: 'images/16-side-step-up-l.jpg', duration: 60, instructions: "Step up leading with left leg." },
+            { name: "Knee Lift Balance", img: 'images/17-knee-lift-balance.jpg', duration: 60, instructions: "Lift knee and hold. Switch sides." },
         ]
     },
     {
         name: "COOL DOWN & STRETCH",
-        duration: "5 min",
+        duration: "~8 min",
         exercises: [
-            { name: "Forward Fold", img: 'images/16-forward-fold.jpg', duration: 60, instructions: "Hinge at hips and relax your back." },
-            { name: "Hamstring Stretch", img: 'images/17-hamstring-stretch.jpg', duration: 60, instructions: "Place heel on plate, hinge forward. Switch sides." },
-            { name: "Quad Stretch", img: 'images/18-quad-stretch.jpg', duration: 60, instructions: "Hold ankle and stretch front of thigh. Switch sides." },
-            { name: "Hip Flexor Stretch", img: 'images/19-hip-flexor-stretch.jpg', duration: 60, instructions: "Step back into a lunge. Switch sides." },
-            { name: "Chest Opener", img: 'images/20-chest-opener.jpg', duration: 60, instructions: "Clasp hands behind you and open your chest." },
+            { name: "Forward Fold", img: 'images/18-forward-fold.jpg', duration: 60, instructions: "Hinge at hips and relax your back." },
+            { name: "Hamstring Stretch (R)", img: 'images/19-hamstring-stretch-r.jpg', duration: 60, instructions: "Right heel on plate, hinge forward." },
+            { name: "Hamstring Stretch (L)", img: 'images/24-hamstring-stretch-l.jpg', duration: 60, instructions: "Left heel on plate, hinge forward." },
+            { name: "Quad Stretch (R)", img: 'images/20-quad-stretch-r.jpg', duration: 60, instructions: "Hold right ankle, stretch front of thigh." },
+            { name: "Quad Stretch (L)", img: 'images/25-quad-stretch-l.jpg', duration: 60, instructions: "Hold left ankle, stretch front of thigh." },
+            { name: "Hip Flexor Stretch (R)", img: 'images/21-hip-flexor-stretch-r.jpg', duration: 60, instructions: "Right leg back into a lunge stretch." },
+            { name: "Hip Flexor Stretch (L)", img: 'images/26-hip-flexor-stretch-l.jpg', duration: 60, instructions: "Left leg back into a lunge stretch." },
+            { name: "Chest Opener", img: 'images/22-chest-opener.jpg', duration: 60, instructions: "Clasp hands behind you and open your chest." },
         ]
     },
 ];
@@ -186,7 +192,7 @@ SECTIONS.forEach((section, sIdx) => {
     });
 });
 
-const GET_READY = 5;
+const GET_READY = 3;
 const REST_BETWEEN_EXERCISES = 10;
 const REST_BETWEEN_SECTIONS = 15;
 const COUNTDOWN_TIMES = [30, 10, 3, 2, 1];
@@ -232,11 +238,37 @@ function playExerciseStart() { playBeep(440,0.15,'sine',0.25); setTimeout(()=>pl
 function playSectionChange() { playBeep(523,0.15,'sine',0.25); setTimeout(()=>playBeep(659,0.15,'sine',0.25),150); setTimeout(()=>playBeep(784,0.25,'sine',0.3),300); }
 function playComplete() { [523,659,784,1047].forEach((n,i)=>setTimeout(()=>playBeep(n,0.3,'sine',0.2),i*200)); }
 
+// Voice selection — use Samantha (most natural on iOS & macOS)
+let preferredVoice = null;
+function selectVoice() {
+    if (!('speechSynthesis' in window)) return;
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length === 0) return;
+    // Try Samantha first (best on both iOS and macOS)
+    let match = voices.find(v => v.name === 'Samantha');
+    if (!match) match = voices.find(v => v.name.includes('Samantha'));
+    if (match) { preferredVoice = match; return; }
+    // Fallbacks
+    const prefs = ['Karen', 'Daniel', 'Moira', 'Tessa', 'Fiona', 'Alex', 'Tom', 'Ava'];
+    for (const pref of prefs) {
+        const m = voices.find(v => v.name.includes(pref) && v.lang.startsWith('en'));
+        if (m) { preferredVoice = m; return; }
+    }
+    // Last resort: any English voice
+    const enVoice = voices.find(v => v.lang.startsWith('en'));
+    if (enVoice) preferredVoice = enVoice;
+}
+if ('speechSynthesis' in window) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = selectVoice;
+}
+
 function speak(text) {
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
-        u.rate = 1.1; u.volume = 0.8;
+        u.rate = 1.0; u.volume = 0.9;
+        if (preferredVoice) u.voice = preferredVoice;
         window.speechSynthesis.speak(u);
         return u;
     }
