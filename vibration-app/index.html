@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Vibration Plate Routine</title>
+    <style>
+        :root {
+            --bg: #0f0f11;
+            --card-bg: #1a1a1f;
+            --card-border: #2a2a30;
+            --text: #e8e8ec;
+            --text-dim: #8a8a94;
+            --accent: #22c55e;
+            --accent-glow: rgba(34, 197, 94, 0.15);
+            --rest-color: #f59e0b;
+            --warn-color: #ef4444;
+            --hold-color: #22c55e;
+            --section-color: #8b5cf6;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh; min-height: 100dvh;
+            display: flex; flex-direction: column; align-items: center;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden; overflow-y: auto;
+            user-select: none; -webkit-user-select: none;
+        }
+        .header { width: 100%; text-align: center; padding: 12px 16px 4px; }
+        .header h1 { font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-dim); }
+        .progress-container { width: 100%; max-width: 480px; padding: 0 16px; margin-bottom: 4px; }
+        .progress-bar-bg { width: 100%; height: 4px; background: var(--card-border); border-radius: 2px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; width: 0%; }
+        .main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; width: 100%; max-width: 480px; padding: 0 24px; }
+        .exercise-photo {
+            width: 100%;
+            max-width: 260px;
+            height: 174px;
+            object-fit: contain;
+            object-position: center center;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            background: var(--card-bg);
+        }
+        .exercise-name { font-size: 1.4rem; font-weight: 700; text-align: center; margin-bottom: 2px; min-height: 1.8rem; line-height: 1.2; }
+        .exercise-section { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--section-color); margin-bottom: 4px; }
+        .exercise-instructions { font-size: 0.8rem; color: var(--text-dim); text-align: center; margin-bottom: 8px; max-width: 320px; line-height: 1.4; min-height: 1.2rem; }
+        .exercise-phase { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; min-height: 1rem; }
+        .exercise-phase.hold { color: var(--hold-color); }
+        .exercise-phase.rest { color: var(--rest-color); }
+        .exercise-phase.get-ready { color: var(--warn-color); }
+        .timer-display { font-size: 6rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; line-height: 1; margin-bottom: 4px; transition: color 0.3s ease; }
+        .timer-display.hold { color: var(--hold-color); }
+        .timer-display.rest { color: var(--rest-color); }
+        .timer-display.get-ready { color: var(--warn-color); }
+        .timer-label { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 16px; }
+        .exercise-counter { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 20px; }
+        .btn-row { display: flex; gap: 12px; margin-bottom: 12px; }
+        .btn { padding: 14px 36px; font-size: 1rem; font-weight: 700; border: none; border-radius: 14px; cursor: pointer; transition: transform 0.1s ease, opacity 0.2s ease; -webkit-tap-highlight-color: transparent; }
+        .btn:active { transform: scale(0.95); }
+        .btn-start { background: var(--accent); color: #000; }
+        .btn-pause { background: var(--rest-color); color: #000; }
+        .btn-resume { background: var(--accent); color: #000; }
+        .btn-skip { background: var(--card-bg); border: 2px solid var(--card-border); color: var(--text); padding: 14px 24px; font-size: 0.9rem; font-weight: 600; }
+        .btn-stop { background: transparent; border: 2px solid var(--card-border); color: var(--text-dim); padding: 14px 36px; font-size: 1rem; font-weight: 700; }
+        .btn-launcher { background: transparent; border: 2px solid var(--card-border); color: var(--text-dim); padding: 10px 24px; font-size: 0.85rem; font-weight: 600; border-radius: 10px; cursor: pointer; text-decoration: none; display: inline-block; transition: transform 0.1s ease, border-color 0.15s ease; }
+        .btn-launcher:active { transform: scale(0.95); border-color: var(--accent); }
+        .start-screen { text-align: center; padding: 16px 0 24px; }
+        .start-screen .title { font-size: 1.6rem; font-weight: 800; margin-bottom: 4px; }
+        .start-screen .subtitle { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 12px; line-height: 1.4; }
+        .section-group { margin-bottom: 12px; }
+        .section-header { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--section-color); padding: 6px 0 4px; border-bottom: 1px solid var(--card-border); margin-bottom: 4px; }
+        .exercise-list { text-align: left; max-width: 340px; margin: 0 auto 16px; }
+        .exercise-list-item { font-size: 0.8rem; padding: 4px 0; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; gap: 8px; }
+        .exercise-list-item .num { color: var(--text-dim); width: 20px; text-align: right; flex-shrink: 0; }
+        .exercise-list-item .name { flex: 1; }
+        .exercise-list-item .dur { color: var(--text-dim); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+        .complete-screen { text-align: center; }
+        .complete-screen .emoji { font-size: 4rem; margin-bottom: 16px; }
+        .complete-screen .title { font-size: 2rem; font-weight: 800; color: var(--accent); margin-bottom: 8px; }
+        .complete-screen .subtitle { font-size: 0.9rem; color: var(--text-dim); margin-bottom: 32px; }
+        .complete-screen .stats { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 24px; line-height: 1.8; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="startScreen" class="start-screen main">
+    <div class="title">💪 Vibration Plate Routine</div>
+    <div class="subtitle" id="startSubtitle">
+        20 exercises · ~25 min<br>
+        4 sections: Warm-Up → Strength → Balance → Cool Down
+    </div>
+    <div class="exercise-list" id="exerciseList"></div>
+    <button class="btn btn-start" id="startBtn">Start Routine</button>
+    <div style="margin-top:16px"><a class="btn-launcher" href="/">🏠 Back to Launcher</a></div>
+</div>
+
+<div id="timerScreen" class="main hidden">
+    <div class="header"><h1 id="screenTitle">Vibration Plate</h1></div>
+    <div class="progress-container"><div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar"></div></div></div>
+    <img class="exercise-photo" id="exercisePhoto" src="images/01-basic-stance.jpg" alt="Exercise pose">
+    <div class="exercise-section" id="exerciseSection">WARM UP & ACTIVATION</div>
+    <div class="exercise-name" id="exerciseName">—</div>
+    <div class="exercise-instructions" id="exerciseInstructions">—</div>
+    <div class="exercise-phase" id="exercisePhase">GET READY</div>
+    <div class="timer-display get-ready" id="timerDisplay">5</div>
+    <div class="timer-label" id="timerLabel">seconds</div>
+    <div class="exercise-counter" id="exerciseCounter">—</div>
+    <div class="btn-row">
+        <button class="btn btn-pause hidden" id="pauseBtn">Pause</button>
+        <button class="btn btn-resume hidden" id="resumeBtn">Resume</button>
+        <button class="btn btn-skip" id="backBtn">⏮ Back</button>
+        <button class="btn btn-skip" id="skipBtn">Skip ⏭</button>
+    </div>
+    <button class="btn btn-stop" id="stopBtn">Stop</button>
+    <div style="margin-top:12px"><a class="btn-launcher" href="/">🏠 Back to Launcher</a></div>
+</div>
+
+<div id="completeScreen" class="complete-screen main hidden">
+    <div class="emoji">🎉</div>
+    <div class="title">Routine Complete!</div>
+    <div class="subtitle">Great job showing up for yourself today.</div>
+    <div class="stats" id="completeStats"></div>
+    <button class="btn btn-start" id="restartBtn">Start Again</button>
+    <div style="margin-top:16px"><a class="btn-launcher" href="/">🏠 Back to Launcher</a></div>
+</div>
+
+<script>
+// 20 vibration plate exercises in 4 sections
+const SECTIONS = [
+    {
+        name: "WARM UP & ACTIVATION",
+        duration: "5 min",
+        exercises: [
+            { name: "Basic Stance", img: 'images/01-basic-stance.jpg', duration: 60, instructions: "Stand tall, feet hip-width apart. Relax and let the plate do the work." },
+            { name: "Mini Squats", img: 'images/02-mini-squats.jpg', duration: 60, instructions: "Slight bend in the knees. Engage your core." },
+            { name: "Wide Stance", img: 'images/03-wide-stance.jpg', duration: 60, instructions: "Feet wider than hips. Soft knees, upright posture." },
+            { name: "March in Place", img: 'images/04-march-in-place.jpg', duration: 60, instructions: "Lift knees one at a time. Swing your arms." },
+            { name: "Calf Raises", img: 'images/05-calf-raises.jpg', duration: 60, instructions: "Rise onto your toes, then lower with control." },
+        ]
+    },
+    {
+        name: "STRENGTH & TONING",
+        duration: "10 min",
+        exercises: [
+            { name: "Squats", img: 'images/06-squats.jpg', duration: 120, instructions: "Push hip back and down. Keep chest lifted." },
+            { name: "Lunges", img: 'images/07-lunges.jpg', duration: 120, instructions: "Step back into a lunge. Alternate legs." },
+            { name: "Push Ups", img: 'images/08-push-ups.jpg', duration: 120, instructions: "Hands on plate, body straight. Engage core and chest." },
+            { name: "Side Plank", img: 'images/09-side-plank.jpg', duration: 120, instructions: "Elbow on plate, lift hips. Hold and switch sides." },
+            { name: "Glute Bridge", img: 'images/10-glute-bridge.jpg', duration: 120, instructions: "Feet on plate, lift hips up. Squeeze your glutes." },
+        ]
+    },
+    {
+        name: "BALANCE & STABILITY",
+        duration: "5-7 min",
+        exercises: [
+            { name: "Single Leg Stand", img: 'images/11-single-leg-stand.jpg', duration: 60, instructions: "Soft knee, engage core. Switch sides." },
+            { name: "Squat Hold", img: 'images/12-squat-hold.jpg', duration: 60, instructions: "Hold a squat position. Stay steady." },
+            { name: "Bird Dog", img: 'images/13-bird-dog.jpg', duration: 60, instructions: "Extend opposite arm and leg. Switch sides." },
+            { name: "Side Step Up", img: 'images/14-side-step-up.jpg', duration: 60, instructions: "Step up and over. Switch sides." },
+            { name: "Knee Lift Balance", img: 'images/15-knee-lift-balance.jpg', duration: 60, instructions: "Lift knee and hold. Switch sides." },
+        ]
+    },
+    {
+        name: "COOL DOWN & STRETCH",
+        duration: "5 min",
+        exercises: [
+            { name: "Forward Fold", img: 'images/16-forward-fold.jpg', duration: 60, instructions: "Hinge at hips and relax your back." },
+            { name: "Hamstring Stretch", img: 'images/17-hamstring-stretch.jpg', duration: 60, instructions: "Place heel on plate, hinge forward. Switch sides." },
+            { name: "Quad Stretch", img: 'images/18-quad-stretch.jpg', duration: 60, instructions: "Hold ankle and stretch front of thigh. Switch sides." },
+            { name: "Hip Flexor Stretch", img: 'images/19-hip-flexor-stretch.jpg', duration: 60, instructions: "Step back into a lunge. Switch sides." },
+            { name: "Chest Opener", img: 'images/20-chest-opener.jpg', duration: 60, instructions: "Clasp hands behind you and open your chest." },
+        ]
+    },
+];
+
+// Flatten exercises with section info for easy indexing
+const ALL_EXERCISES = [];
+SECTIONS.forEach((section, sIdx) => {
+    section.exercises.forEach(ex => {
+        ALL_EXERCISES.push({ ...ex, section: section.name, sectionIdx: sIdx });
+    });
+});
+
+const GET_READY = 5;
+const REST_BETWEEN_EXERCISES = 10;
+const REST_BETWEEN_SECTIONS = 15;
+const COUNTDOWN_TIMES = [30, 10, 3, 2, 1];
+
+const totalExercises = ALL_EXERCISES.length;
+
+// Calculate total routine time
+function getTotalRoutineSeconds() {
+    let total = 0;
+    ALL_EXERCISES.forEach((ex, idx) => {
+        total += GET_READY + ex.duration;
+        if (idx < totalExercises - 1) {
+            const nextEx = ALL_EXERCISES[idx + 1];
+            total += (ex.sectionIdx !== nextEx.sectionIdx) ? REST_BETWEEN_SECTIONS : REST_BETWEEN_EXERCISES;
+        }
+    });
+    return total;
+}
+
+let audioCtx = null;
+function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playBeep(freq, dur, type='sine', vol=0.3) {
+    if (!audioCtx) return;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime + dur);
+}
+function playCountdownBeep(n) {
+    if (n===1) playBeep(880,0.4,'square',0.25);
+    else if (n===2) playBeep(660,0.3,'square',0.2);
+    else if (n===3) playBeep(550,0.25,'square',0.2);
+    else if (n===30) playBeep(440,0.2,'sine',0.15);
+    else if (n===10) playBeep(440,0.25,'triangle',0.2);
+}
+function playPhaseChange() { playBeep(523,0.15,'sine',0.2); setTimeout(()=>playBeep(659,0.15,'sine',0.2),150); }
+function playExerciseStart() { playBeep(440,0.15,'sine',0.25); setTimeout(()=>playBeep(554,0.15,'sine',0.25),150); setTimeout(()=>playBeep(659,0.2,'sine',0.3),300); }
+function playSectionChange() { playBeep(523,0.15,'sine',0.25); setTimeout(()=>playBeep(659,0.15,'sine',0.25),150); setTimeout(()=>playBeep(784,0.25,'sine',0.3),300); }
+function playComplete() { [523,659,784,1047].forEach((n,i)=>setTimeout(()=>playBeep(n,0.3,'sine',0.2),i*200)); }
+
+function speak(text) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 1.1; u.volume = 0.8;
+        window.speechSynthesis.speak(u);
+    }
+}
+
+function buildExerciseList() {
+    const list = document.getElementById('exerciseList');
+    list.innerHTML = '';
+    let num = 0;
+    SECTIONS.forEach(section => {
+        const group = document.createElement('div');
+        group.className = 'section-group';
+        const header = document.createElement('div');
+        header.className = 'section-header';
+        header.textContent = `${section.name} · ${section.duration}`;
+        group.appendChild(header);
+        section.exercises.forEach(ex => {
+            num++;
+            const div = document.createElement('div');
+            div.className = 'exercise-list-item';
+            const dur = ex.duration >= 120 ? '2:00' : '1:00';
+            div.innerHTML = `<span class="num">${num}.</span><span class="name">${ex.name}</span><span class="dur">${dur}</span>`;
+            group.appendChild(div);
+        });
+        list.appendChild(group);
+    });
+}
+
+let state = 'idle', currentIdx = 0, currentPhase = '', phaseTimeRemaining = 0, totalTimer = null, startTime = 0;
+let wakeLock = null;
+const $ = id => document.getElementById(id);
+
+function getCurrentExercise() { return ALL_EXERCISES[currentIdx]; }
+
+function getRestDuration() {
+    if (currentIdx >= totalExercises - 1) return 0;
+    const cur = ALL_EXERCISES[currentIdx];
+    const next = ALL_EXERCISES[currentIdx + 1];
+    return (cur.sectionIdx !== next.sectionIdx) ? REST_BETWEEN_SECTIONS : REST_BETWEEN_EXERCISES;
+}
+
+function getPhaseLength() {
+    if (currentPhase === 'get-ready') return GET_READY;
+    if (currentPhase === 'hold') return getCurrentExercise().duration;
+    if (currentPhase === 'rest') return getRestDuration();
+    return 0;
+}
+
+function updateUI() {
+    const timer = $('timerDisplay'), name = $('exerciseName'), phase = $('exercisePhase'),
+          counter = $('exerciseCounter'), progressBar = $('progressBar'), photo = $('exercisePhoto'),
+          sectionLabel = $('exerciseSection'), instructions = $('exerciseInstructions');
+    if (state === 'idle') return;
+
+    // Calculate elapsed time for progress bar
+    let elapsed = 0;
+    for (let i = 0; i < currentIdx; i++) {
+        elapsed += GET_READY + ALL_EXERCISES[i].duration;
+        if (i < currentIdx - 1) {
+            const cur = ALL_EXERCISES[i];
+            const next = ALL_EXERCISES[i + 1];
+            elapsed += (cur.sectionIdx !== next.sectionIdx) ? REST_BETWEEN_SECTIONS : REST_BETWEEN_EXERCISES;
+        }
+    }
+    elapsed += (getPhaseLength() - phaseTimeRemaining);
+    progressBar.style.width = Math.min((elapsed / getTotalRoutineSeconds()) * 100, 100) + '%';
+
+    if (currentIdx < totalExercises) {
+        const ex = getCurrentExercise();
+        name.textContent = ex.name;
+        photo.src = ex.img;
+        sectionLabel.textContent = ex.section;
+        instructions.textContent = ex.instructions;
+    }
+
+    if (currentPhase === 'get-ready') {
+        phase.textContent = 'GET READY'; phase.className = 'exercise-phase get-ready';
+        timer.className = 'timer-display get-ready'; $('timerLabel').textContent = 'seconds';
+    } else if (currentPhase === 'hold') {
+        phase.textContent = 'EXERCISE'; phase.className = 'exercise-phase hold';
+        timer.className = 'timer-display hold'; $('timerLabel').textContent = 'remaining';
+    } else if (currentPhase === 'rest') {
+        const next = ALL_EXERCISES[currentIdx + 1];
+        if (next && next.sectionIdx !== getCurrentExercise().sectionIdx) {
+            phase.textContent = 'REST — NEXT SECTION'; 
+        } else {
+            phase.textContent = 'REST';
+        }
+        phase.className = 'exercise-phase rest';
+        timer.className = 'timer-display rest'; $('timerLabel').textContent = 'seconds';
+    }
+    timer.textContent = phaseTimeRemaining;
+    counter.textContent = `Exercise ${currentIdx + 1} of ${totalExercises}`;
+}
+
+function nextPhase() {
+    if (currentPhase === 'get-ready') {
+        currentPhase = 'hold'; phaseTimeRemaining = getCurrentExercise().duration;
+        playExerciseStart(); speak('Go');
+    } else if (currentPhase === 'hold') {
+        if (currentIdx >= totalExercises - 1) { finishRoutine(); return; }
+        const next = ALL_EXERCISES[currentIdx + 1];
+        const crossingSection = next.sectionIdx !== getCurrentExercise().sectionIdx;
+        currentPhase = 'rest'; phaseTimeRemaining = getRestDuration();
+        if (crossingSection) {
+            playSectionChange();
+            speak('Section ' + (next.sectionIdx + 1) + '. ' + SECTIONS[next.sectionIdx].name);
+        } else {
+            playPhaseChange(); speak('Rest');
+        }
+    } else if (currentPhase === 'rest') {
+        currentIdx++;
+        currentPhase = 'get-ready'; phaseTimeRemaining = GET_READY;
+        const ex = getCurrentExercise();
+        playPhaseChange(); speak(ex.name + '. ' + ex.instructions);
+    }
+    updateUI();
+}
+
+function tick() {
+    if (state !== 'running') return;
+    if (COUNTDOWN_TIMES.includes(phaseTimeRemaining) && phaseTimeRemaining > 0) {
+        playCountdownBeep(phaseTimeRemaining);
+        if (phaseTimeRemaining <= 10) speak(String(phaseTimeRemaining));
+        else if (phaseTimeRemaining === 30) speak('Thirty');
+    }
+    phaseTimeRemaining--;
+    if (phaseTimeRemaining < 0) { nextPhase(); return; }
+    updateUI();
+}
+
+async function requestWakeLock() {
+    try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch (e) { /* Wake Lock not supported */ }
+}
+
+function releaseWakeLock() {
+    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+}
+
+function startRoutine() {
+    initAudio(); state = 'running'; currentIdx = 0;
+    currentPhase = 'get-ready'; phaseTimeRemaining = GET_READY;
+    startTime = Date.now();
+    requestWakeLock();
+    $('startScreen').classList.add('hidden');
+    $('timerScreen').classList.remove('hidden');
+    $('completeScreen').classList.add('hidden');
+    $('pauseBtn').classList.remove('hidden');
+    $('resumeBtn').classList.add('hidden');
+    $('skipBtn').classList.remove('hidden');
+    $('stopBtn').classList.remove('hidden');
+    playPhaseChange(); speak(ALL_EXERCISES[0].name + '. ' + ALL_EXERCISES[0].instructions);
+    updateUI(); totalTimer = setInterval(tick, 1000);
+}
+
+function pauseRoutine() {
+    if (state !== 'running') return; state = 'paused'; clearInterval(totalTimer);
+    releaseWakeLock();
+    $('pauseBtn').classList.add('hidden'); $('resumeBtn').classList.remove('hidden');
+    window.speechSynthesis.cancel();
+}
+
+function resumeRoutine() {
+    if (state !== 'paused') return; state = 'running';
+    requestWakeLock();
+    $('pauseBtn').classList.remove('hidden'); $('resumeBtn').classList.add('hidden');
+    totalTimer = setInterval(tick, 1000);
+}
+
+function backExercise() {
+    if (state !== 'running' && state !== 'paused') return;
+    window.speechSynthesis.cancel();
+    if (currentIdx === 0 && currentPhase === 'get-ready') return;
+    // Go to previous exercise's get-ready
+    if (currentIdx > 0) currentIdx--;
+    if (state === 'paused') {
+        state = 'running';
+        $('pauseBtn').classList.remove('hidden'); $('resumeBtn').classList.add('hidden');
+        totalTimer = setInterval(tick, 1000);
+    }
+    currentPhase = 'get-ready'; phaseTimeRemaining = GET_READY;
+    const ex = getCurrentExercise();
+    playPhaseChange(); speak(ex.name + '. ' + ex.instructions);
+    updateUI();
+}
+
+function skipExercise() {
+    if (state !== 'running' && state !== 'paused') return;
+    window.speechSynthesis.cancel();
+    currentIdx++;
+    if (currentIdx >= totalExercises) { finishRoutine(); return; }
+    if (state === 'paused') {
+        state = 'running';
+        $('pauseBtn').classList.remove('hidden'); $('resumeBtn').classList.add('hidden');
+        totalTimer = setInterval(tick, 1000);
+    }
+    currentPhase = 'get-ready'; phaseTimeRemaining = GET_READY;
+    const ex = getCurrentExercise();
+    playPhaseChange(); speak(ex.name + '. ' + ex.instructions);
+    updateUI();
+}
+
+function stopRoutine() {
+    state = 'idle'; clearInterval(totalTimer); releaseWakeLock(); window.speechSynthesis.cancel();
+    $('startScreen').classList.remove('hidden');
+    $('timerScreen').classList.add('hidden');
+    $('completeScreen').classList.add('hidden');
+}
+
+function finishRoutine() {
+    state = 'idle'; clearInterval(totalTimer); releaseWakeLock(); window.speechSynthesis.cancel();
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    const mins = Math.floor(elapsed / 60), secs = elapsed % 60;
+    $('timerScreen').classList.add('hidden');
+    $('completeScreen').classList.remove('hidden');
+    $('completeStats').innerHTML = `${totalExercises} exercises completed<br>${mins}:${secs.toString().padStart(2,'0')} total time`;
+    playComplete(); speak('Routine complete! Great job!');
+}
+
+$('startBtn').addEventListener('click', startRoutine);
+$('pauseBtn').addEventListener('click', pauseRoutine);
+$('resumeBtn').addEventListener('click', resumeRoutine);
+$('backBtn').addEventListener('click', backExercise);
+$('skipBtn').addEventListener('click', skipExercise);
+$('stopBtn').addEventListener('click', stopRoutine);
+$('restartBtn').addEventListener('click', startRoutine);
+document.addEventListener('click', () => initAudio(), { once: true });
+
+buildExerciseList();
+</script>
+</body>
+</html>
