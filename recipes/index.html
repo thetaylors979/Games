@@ -44,6 +44,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .back-link{display:inline-block;background:#111118;border:1px solid #374151;color:#6b7280;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;margin-bottom:10px;transition:all .2s}
 .back-link:hover{border-color:#3b82f6;color:#93c5fd}
+.launcher-link{display:inline-block;background:#111118;border:1px solid #1f2937;color:#6b7280;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;margin-bottom:16px;transition:all .2s;text-decoration:none}
+.launcher-link:hover{border-color:#3b82f6;color:#93c5fd}
 .cat-card{display:flex;flex-direction:column;align-items:center;justify-content:center;background:#111118;border:1px solid #1f2937;border-radius:12px;padding:20px 12px;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;text-align:center}
 .cat-card:hover,.cat-card:active{border-color:#3b82f6;background:#161b2e}
 .cat-card:active{transform:scale(0.97)}
@@ -61,6 +63,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <p id="page-sub">Family favorites</p>
     </div>
   </div>
+  <a class="launcher-link" href="/">🏠 Return to Launcher</a>
   <div class="cards" id="cards"></div>
   <div id="detail-bar" style="display:none;text-align:center;padding:12px;margin-bottom:10px">
     <button class="back-link" onclick="showRecipes()">← Back to Recipes</button>
