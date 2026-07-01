@@ -1322,9 +1322,8 @@ function playerAction(action) {
   switch (action) {
     case 'fold':
       state.phase = 'round_over';
-      state.potSize = 0; // lose ante
       messageEl.className = 'message lose';
-      messageEl.textContent = 'Fold — You lose your ante.';
+      messageEl.textContent = `Fold — You lose your $${state.anteAmount} ante.`;
       endRound();
       return;
       
@@ -1415,20 +1414,26 @@ function showdown() {
   
   const result = compareHands(playerHand, dealerHand);
   
+  // currentBet = ante + play bet (if any). potSize = ante*2 + play bet.
+  // On win: player gets entire pot back (their bet + dealer's matching money)
+  // On lose: player already paid their bets, they get nothing back
+  // On push: player gets their full bet back (ante + play bet)
+  
   let resultText, resultClass;
   if (result > 0) {
-    // Player wins
+    // Player wins — get the whole pot
+    const profit = state.potSize - state.currentBet;
     state.bankroll += state.potSize;
-    resultText = `Win — ${playerHand.name} beats ${dealerHand.name} +$${state.potSize - state.currentBet}`;
+    resultText = `Win! ${playerHand.name} beats ${dealerHand.name} — +$${profit}`;
     resultClass = 'win';
   } else if (result < 0) {
-    // Dealer wins
-    resultText = `Lose — ${playerHand.name} loses to ${dealerHand.name} -$${state.currentBet}`;
+    // Dealer wins — player already paid, nothing returned
+    resultText = `Lose — ${playerHand.name} loses to ${dealerHand.name} — -$${state.currentBet}`;
     resultClass = 'lose';
   } else {
-    // Push
-    state.bankroll += state.currentBet; // return bet
-    resultText = `Push — ${playerHand.name} ties ${dealerHand.name}`;
+    // Push — return full bet (ante + play bet)
+    state.bankroll += state.currentBet;
+    resultText = `Push — ${playerHand.name} ties ${dealerHand.name} — bet returned`;
     resultClass = 'result';
   }
   
