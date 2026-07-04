@@ -1333,7 +1333,7 @@ function playerAction(action) {
       break;
       
     case 'bet':
-      // Bet 2x ante (one-time play bet)
+      // Bet 2x ante (one-time play bet) — dealer matches
       if (state.hasPlayed) {
         messageEl.textContent = 'Already made your play bet!';
         return;
@@ -1345,13 +1345,13 @@ function playerAction(action) {
       }
       state.bankroll -= bet2x;
       state.currentBet += bet2x;
-      state.potSize += bet2x;
+      state.potSize += bet2x * 2; // player bet + dealer match
       state.hasPlayed = true;
       advancePhase();
       break;
       
     case 'raise':
-      // Raise 4x ante (one-time play bet)
+      // Raise 4x ante (one-time play bet) — dealer matches
       if (state.hasPlayed) {
         messageEl.textContent = 'Already made your play bet!';
         return;
@@ -1363,7 +1363,7 @@ function playerAction(action) {
       }
       state.bankroll -= raise4x;
       state.currentBet += raise4x;
-      state.potSize += raise4x;
+      state.potSize += raise4x * 2; // player bet + dealer match
       state.hasPlayed = true;
       advancePhase();
       break;
@@ -1424,16 +1424,16 @@ function showdown() {
     // Player wins — get the whole pot
     const profit = state.potSize - state.currentBet;
     state.bankroll += state.potSize;
-    resultText = `Win! ${playerHand.name} beats ${dealerHand.name} — +$${profit}`;
+    resultText = `Win! ${playerHand.name} beats ${dealerHand.name} — won $${state.potSize} pot (+$${profit} profit)`;
     resultClass = 'win';
   } else if (result < 0) {
     // Dealer wins — player already paid, nothing returned
-    resultText = `Lose — ${playerHand.name} loses to ${dealerHand.name} — -$${state.currentBet}`;
+    resultText = `Lose — ${playerHand.name} loses to ${dealerHand.name} — lost $${state.currentBet}`;
     resultClass = 'lose';
   } else {
     // Push — return full bet (ante + play bet)
     state.bankroll += state.currentBet;
-    resultText = `Push — ${playerHand.name} ties ${dealerHand.name} — bet returned`;
+    resultText = `Push — ${playerHand.name} ties ${dealerHand.name} — $${state.currentBet} returned`;
     resultClass = 'result';
   }
   
