@@ -1,0 +1,1989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Hike Tracker</title>
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --surface: #2a2a2a;
+    --primary: #4ade80;
+    --accent: #f59e0b;
+    --red: #ef4444;
+    --blue: #60a5fa;
+    --text: #f0f0f0;
+    --muted: #888888;
+    --border: #3a3a3a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Top status bar */
+  #status-bar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  #gps-indicator {
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  #gps-indicator .bars { display: flex; gap: 2px; align-items: flex-end; }
+  #gps-indicator .bar {
+    width: 4px; background: var(--muted); border-radius: 1px;
+  }
+  #gps-indicator .bar.active { background: var(--primary); }
+  .bar:nth-child(1) { height: 6px; }
+  .bar:nth-child(2) { height: 10px; }
+  .bar:nth-child(3) { height: 14px; }
+  .bar:nth-child(4) { height: 18px; }
+
+  #gps-accuracy { color: var(--muted); font-size: 12px; }
+  #elapsed-time { font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; }
+
+  /* Tab navigation */
+  #tab-nav {
+    display: flex; background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+
+  .tab-btn {
+    flex: 1; padding: 12px 4px; text-align: center;
+    background: none; border: none; color: var(--muted);
+    font-size: 11px; font-weight: 500; cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .tab-btn .tab-icon { font-size: 18px; display: block; margin-bottom: 2px; }
+
+  /* Phase content */
+  .phase { display: none; padding: 16px; padding-bottom: 100px; }
+  .phase.active { display: block; }
+
+  /* ===== TRAIL LOOKUP UI ===== */
+  .lookup-section {
+    background: var(--surface); border-radius: 12px; padding: 16px;
+    margin-bottom: 16px;
+  }
+  .lookup-section h3 {
+    font-size: 15px; margin-bottom: 12px; color: var(--primary);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .lookup-input {
+    width: 100%; padding: 12px; margin-bottom: 8px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 15px;
+  }
+  .lookup-input:focus { border-color: var(--primary); outline: none; }
+  .lookup-input::placeholder { color: var(--muted); }
+  .lookup-btn {
+    width: 100%; padding: 14px; border: none; border-radius: 8px;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    background: var(--primary); color: var(--bg);
+    transition: opacity 0.2s;
+  }
+  .lookup-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .lookup-btn.secondary {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--muted); font-weight: 500; font-size: 14px;
+    margin-top: 8px;
+  }
+  .lookup-status {
+    margin-top: 12px; padding: 12px; border-radius: 8px;
+    font-size: 14px; display: none;
+  }
+  .lookup-status.loading {
+    display: block; background: var(--bg); color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  .lookup-status.success {
+    display: block; background: var(--bg); color: var(--primary);
+    border: 1px solid var(--primary);
+  }
+  .lookup-status.error {
+    display: block; background: var(--bg); color: var(--red);
+    border: 1px solid var(--red);
+  }
+  .lookup-status .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid var(--accent); border-top-color: transparent;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+    vertical-align: middle; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Trail info card */
+  .trail-info-card {
+    background: var(--surface); border-radius: 12px; padding: 16px;
+    margin-bottom: 12px; display: none;
+  }
+  .trail-info-card.visible { display: block; }
+  .trail-info-card h4 {
+    font-size: 14px; color: var(--primary); margin-bottom: 8px;
+  }
+  .trail-info-row {
+    display: flex; justify-content: space-between; padding: 4px 0;
+    font-size: 13px; color: var(--muted);
+  }
+  .trail-info-row .val { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Divider between lookup and manual import */
+  .import-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 20px 0; color: var(--muted); font-size: 12px;
+  }
+  .import-divider::before, .import-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* Map import */
+  #import-area {
+    border: 2px dashed var(--border); border-radius: 12px;
+    padding: 48px 24px; text-align: center; cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  #import-area:hover, #import-area.dragover { border-color: var(--primary); }
+  #import-area svg { margin: 0 auto 12px; }
+  #import-area p { color: var(--muted); font-size: 14px; }
+  #import-area .hint { font-size: 12px; margin-top: 8px; }
+
+  #import-area.loaded {
+    border-style: solid; border-color: var(--primary);
+    padding: 8px; background: var(--surface);
+  }
+  #import-area.loaded #map-preview {
+    width: 100%; border-radius: 8px; display: block;
+  }
+  #import-area.loaded .import-text { display: none; }
+
+  /* Map canvas for geo-ref and tracking */
+  #map-canvas-container {
+    position: relative; width: 100%; aspect-ratio: 3/4;
+    background: var(--surface); border-radius: 12px; overflow: hidden;
+    margin-bottom: 12px;
+  }
+  #map-canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+
+  /* No-map placeholder */
+  .no-map-msg {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 200px; color: var(--muted); text-align: center; font-size: 14px;
+  }
+
+  /* Control points list */
+  #ctrl-points { margin-top: 12px; }
+  .ctrl-point-row {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    background: var(--surface); border-radius: 8px; margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .ctrl-point-num {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--accent);
+    color: var(--bg); font-weight: 700; font-size: 12px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .ctrl-point-coords { flex: 1; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+  .ctrl-point-remove {
+    background: none; border: none; color: var(--red); cursor: pointer;
+    font-size: 18px; padding: 4px;
+  }
+
+  /* Add control point button */
+  .add-point-btn {
+    width: 100%; padding: 14px; background: var(--surface);
+    border: 1px dashed var(--accent); border-radius: 8px;
+    color: var(--accent); font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+
+  /* Geo-ref modal */
+  #geo-modal {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.7); align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  #geo-modal.show { display: flex; }
+
+  .modal-card {
+    background: var(--surface); border-radius: 12px; padding: 24px;
+    width: 100%; max-width: 360px;
+  }
+  .modal-card h3 { margin-bottom: 16px; font-size: 16px; }
+  .modal-card input {
+    width: 100%; padding: 12px; margin-bottom: 10px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 15px;
+  }
+  .modal-card input:focus { border-color: var(--primary); outline: none; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 8px; }
+  .modal-actions button { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .btn-confirm { background: var(--primary); color: var(--bg); }
+  .btn-cancel { background: var(--border); color: var(--text); }
+  .btn-gps {
+    width: 100%; padding: 10px; margin-bottom: 10px;
+    background: var(--bg); border: 1px solid var(--primary);
+    border-radius: 8px; color: var(--primary); font-size: 13px;
+    cursor: pointer; font-weight: 600;
+  }
+
+  /* Stats card */
+  #stats-card {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px; background: var(--border); border-radius: 12px;
+    overflow: hidden; margin-bottom: 12px;
+  }
+  .stat-cell {
+    background: var(--surface); padding: 14px 8px; text-align: center;
+  }
+  .stat-value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Review summary */
+  .review-stats {
+    background: var(--surface); border-radius: 12px; padding: 16px;
+    margin-bottom: 12px;
+  }
+  .review-stats h3 { font-size: 14px; margin-bottom: 12px; color: var(--primary); }
+  .review-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .review-row:last-child { border-bottom: none; }
+  .review-row .label { color: var(--muted); }
+  .review-row .value { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Bottom action bar */
+  #action-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom));
+    background: var(--bg); border-top: 1px solid var(--border);
+    z-index: 10;
+  }
+
+  #action-btn {
+    width: 100%; height: 56px; border: none; border-radius: 12px;
+    font-size: 18px; font-weight: 700; cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  #action-btn:active { transform: scale(0.98); }
+
+  #action-btn.start { background: var(--primary); color: var(--bg); }
+  #action-btn.stop { background: var(--red); color: white; }
+  #action-btn.disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  #action-btn.review { background: var(--accent); color: var(--bg); }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4); }
+    50% { box-shadow: 0 0 0 12px rgba(74, 222, 128, 0); }
+  }
+  #action-btn.start.recording { animation: pulse 2s infinite; }
+
+  /* Export buttons */
+  .export-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .export-btn {
+    flex: 1; padding: 14px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 14px;
+    font-weight: 600; cursor: pointer; text-align: center;
+  }
+
+  /* Unit toggle */
+  .unit-toggle {
+    display: flex; background: var(--bg); border-radius: 8px; overflow: hidden;
+    margin-bottom: 12px; border: 1px solid var(--border);
+  }
+  .unit-toggle button {
+    flex: 1; padding: 8px; background: none; border: none;
+    color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .unit-toggle button.active { background: var(--surface); color: var(--primary); }
+</style>
+</head>
+<body>
+
+<!-- Status bar -->
+<div id="status-bar">
+  <div id="gps-indicator">
+    <div class="bars">
+      <div class="bar" id="bar1"></div>
+      <div class="bar" id="bar2"></div>
+      <div class="bar" id="bar3"></div>
+      <div class="bar" id="bar4"></div>
+    </div>
+    <span id="gps-accuracy">No GPS</span>
+  </div>
+  <div id="elapsed-time">00:00:00</div>
+  <div id="current-distance">0.00 mi</div>
+</div>
+
+<!-- Tab navigation -->
+<div id="tab-nav">
+  <button class="tab-btn active" data-phase="import">
+    <span class="tab-icon">🗺️</span>Map
+  </button>
+  <button class="tab-btn" data-phase="georef">
+    <span class="tab-icon">📍</span>Geo-Ref
+  </button>
+  <button class="tab-btn" data-phase="track">
+    <span class="tab-icon">🥾</span>Track
+  </button>
+  <button class="tab-btn" data-phase="review">
+    <span class="tab-icon">📊</span>Review
+  </button>
+</div>
+
+<!-- Phase: Map Import (now includes Trail Lookup) -->
+<div id="phase-import" class="phase active">
+  <!-- Trail Auto-Lookup Section -->
+  <div class="lookup-section">
+    <h3>🔍 Trail Auto-Lookup</h3>
+    <input type="text" id="lookup-park" class="lookup-input" placeholder="Park name (e.g. Guadalupe Mountains NP)">
+    <input type="text" id="lookup-trail" class="lookup-input" placeholder="Trail name (e.g. Bush Mountain Trail)">
+    <button class="lookup-btn" id="lookup-go-btn" onclick="lookupTrail()">Find Trail</button>
+    <button class="lookup-btn secondary" id="lookup-nearby-btn" onclick="lookupNearby()">📍 Find Trails Near Me</button>
+    <div id="lookup-status" class="lookup-status"></div>
+  </div>
+
+  <!-- Trail info card (shown after successful lookup) -->
+  <div id="trail-info-card" class="trail-info-card">
+    <h4 id="trail-info-title">Trail Found</h4>
+    <div class="trail-info-row"><span>Type</span><span class="val" id="trail-info-type">--</span></div>
+    <div class="trail-info-row"><span>Trailhead</span><span class="val" id="trail-info-head">--</span></div>
+    <div class="trail-info-row"><span>Trail End</span><span class="val" id="trail-info-end">--</span></div>
+    <div class="trail-info-row"><span>Waypoints</span><span class="val" id="trail-info-waypoints">--</span></div>
+    <div class="trail-info-row"><span>Alignment</span><span class="val" id="trail-info-alignment">--</span></div>
+  </div>
+
+  <!-- Trail results list (for nearby search) -->
+  <div id="trail-results-list" style="display:none; margin-bottom:16px;">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px;" id="trail-results-count"></div>
+    <div id="trail-results-container"></div>
+  </div>
+
+  <!-- Divider -->
+  <div class="import-divider">or import a map photo</div>
+
+  <!-- Manual map import -->
+  <div id="import-area" onclick="pickMapImage()">
+    <div class="import-text">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:block;margin:0 auto 12px;color:var(--muted)">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <path d="M21 15l-5-5L5 21"/>
+      </svg>
+      <p>Import Trail Map</p>
+      <p class="hint">Tap to choose a photo or take one</p>
+    </div>
+    <img id="map-preview" style="display:none">
+  </div>
+  <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFileSelect(event)">
+  <div id="map-info" style="margin-top:12px;font-size:13px;color:var(--muted);display:none">
+    <span id="map-dims"></span>
+  </div>
+</div>
+
+<!-- Phase: Geo-Reference -->
+<div id="phase-georef" class="phase">
+  <div id="georef-no-map" class="no-map-msg">
+    <p>Import a map or look up a trail first</p>
+  </div>
+  <div id="georef-content" style="display:none">
+    <div id="map-canvas-container">
+      <canvas id="map-canvas"></canvas>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Tap on the map to place control points, then enter their real GPS coordinates.</p>
+    <div id="ctrl-points"></div>
+    <button class="add-point-btn" onclick="enterAddPointMode()">+ Add Control Point</button>
+    <button class="add-point-btn" style="margin-top:8px;border-color:var(--primary);color:var(--primary)" onclick="alignMap()">✓ Align Map</button>
+  </div>
+</div>
+
+<!-- Phase: Track -->
+<div id="phase-track" class="phase">
+  <div class="unit-toggle">
+    <button class="active" onclick="setUnits('mi',this)">mi</button>
+    <button onclick="setUnits('km',this)">km</button>
+  </div>
+  <div id="stats-card">
+    <div class="stat-cell">
+      <div class="stat-value" id="stat-distance">0.00</div>
+      <div class="stat-label" id="stat-dist-unit">mi</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-value" id="stat-time">00:00</div>
+      <div class="stat-label">Time</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-value" id="stat-elev">--</div>
+      <div class="stat-label">Elev ft</div>
+    </div>
+  </div>
+  <div id="track-map-container" style="position:relative;width:100%;aspect-ratio:1;background:var(--surface);border-radius:12px;overflow:hidden;">
+    <canvas id="track-canvas" style="width:100%;height:100%;display:block;"></canvas>
+  </div>
+  <p style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center" id="track-status">Press START to begin tracking</p>
+</div>
+
+<!-- Phase: Review -->
+<div id="phase-review" class="phase">
+  <div id="review-no-data" class="no-map-msg">
+    <p>No hike data yet. Start a hike first!</p>
+  </div>
+  <div id="review-content" style="display:none">
+    <div class="review-stats">
+      <h3>📈 Hike Summary</h3>
+      <div class="review-row"><span class="label">Distance</span><span class="value" id="rev-distance">--</span></div>
+      <div class="review-row"><span class="label">Time</span><span class="value" id="rev-time">--</span></div>
+      <div class="review-row"><span class="label">Avg Speed</span><span class="value" id="rev-speed">--</span></div>
+      <div class="review-row"><span class="label">Track Points</span><span class="value" id="rev-points">--</span></div>
+    </div>
+    <div style="position:relative;width:100%;aspect-ratio:1;background:var(--surface);border-radius:12px;overflow:hidden;margin-bottom:12px">
+      <canvas id="review-canvas" style="width:100%;height:100%;display:block;"></canvas>
+    </div>
+    <div class="export-row">
+      <button class="export-btn" onclick="exportImage()">📷 Save Image</button>
+      <button class="export-btn" onclick="newHike()">🔄 New Hike</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom action bar -->
+<div id="action-bar">
+  <button id="action-btn" class="start" onclick="handleAction()">START HIKE</button>
+</div>
+
+<!-- Geo-ref modal -->
+<div id="geo-modal">
+  <div class="modal-card">
+    <h3>📍 Control Point <span id="modal-pt-num">1</span></h3>
+    <button class="btn-gps" onclick="useCurrentGPS()">📌 Use My Current GPS</button>
+    <input type="text" id="input-lat" placeholder="Latitude (e.g. 31.9225)" inputmode="decimal">
+    <input type="text" id="input-lon" placeholder="Longitude (e.g. -104.8700)" inputmode="decimal">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm" onclick="confirmPoint()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+const state = {
+  mapImage: null,         // Image object (for manual photo import)
+  mapDataURL: null,       // base64 data URL
+  controlPoints: [],      // {px, py, lat, lon} — for geo-ref with map image
+  addingPoint: false,
+  pendingPixel: null,     // {x, y} pixel coords on map for pending control point
+  geoTransform: null,     // computed affine transform (for map image overlay)
+
+  // Trail auto-lookup state
+  trailData: null,        // { nodes: [{lat,lon}], name, type, trailhead, trailend, waypoints }
+  trailBounds: null,      // { minLat, maxLat, minLon, maxLon }
+  trailAligned: false,    // whether trail lookup auto-aligned the map
+  
+  tracking: false,
+  trackPoints: [],        // {lat, lon, alt, time}
+  startTime: null,
+  totalDistance: 0,
+  units: 'mi',
+  watchId: null,
+  timerInterval: null,
+  lastGpsAccuracy: null,
+  elevationGain: 0,
+  elevationLoss: 0,
+};
+
+// ===== OVERPASS API - TRAIL LOOKUP =====
+const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+
+async function lookupTrail() {
+  const parkName = document.getElementById('lookup-park').value.trim();
+  const trailName = document.getElementById('lookup-trail').value.trim();
+  
+  if (!trailName && !parkName) {
+    showLookupStatus('Enter a trail name or park name', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('lookup-go-btn');
+  btn.disabled = true;
+  showLookupStatus('Searching OpenStreetMap...', 'loading');
+
+  try {
+    // Build Overpass query: search for the trail relation/way by name
+    // Try trail name + park name together for better results
+    const nameFilter = trailName || parkName;
+    const query = `
+[out:json][timeout:30];
+(
+  relation["name"~"${escapeOverpass(nameFilter)}",i]["route"="hike"](${getUSABbox()});
+  way["name"~"${escapeOverpass(nameFilter)}",i]["highway"~"path|track|footway|trail"](${getUSABbox()});
+  relation["name"~"${escapeOverpass(nameFilter)}",i]["route"="foot"](${getUSABbox()});
+);
+out body;
+>;
+out skel qt;
+`;
+
+    const resp = await fetch(OVERPASS_URL, {
+      method: 'POST',
+      body: 'data=' + encodeURIComponent(query),
+    });
+
+    if (!resp.ok) throw new Error(`Overpass API error: ${resp.status}`);
+    
+    const data = await resp.json();
+    
+    // Build a node index for resolving way/relation members
+    const nodeIndex = {};
+    data.elements.forEach(el => {
+      if (el.type === 'node') {
+        nodeIndex[el.id] = { lat: el.lat, lon: el.lon, tags: el.tags || {} };
+      }
+    });
+
+    // Find trail elements (relations and ways with matching names)
+    const trails = [];
+    data.elements.forEach(el => {
+      if ((el.type === 'relation' || el.type === 'way') && el.tags && el.tags.name) {
+        const nameMatch = el.tags.name.toLowerCase().includes(nameFilter.toLowerCase());
+        if (nameMatch) {
+          trails.push(el);
+        }
+      }
+    });
+
+    // If park name was given, try to filter by area
+    let bestTrail = null;
+    if (parkName && trails.length > 1) {
+      // Prefer trails that are within or near the park
+      // For now, just use name matching priority
+      const parkLower = parkName.toLowerCase();
+      // Check if any trail has a tag referencing the park
+      bestTrail = trails.find(t => {
+        const tags = t.tags || {};
+        return (tags['park_name'] || '').toLowerCase().includes(parkLower) ||
+               (tags['description'] || '').toLowerCase().includes(parkLower);
+      }) || trails[0];
+    } else if (trails.length > 0) {
+      bestTrail = trails[0];
+    }
+
+    if (!bestTrail) {
+      // Try a broader search — just the trail name without park constraint
+      if (parkName && trailName) {
+        // Retry with just trail name
+        document.getElementById('lookup-park').value = '';
+        const broaderResults = await lookupTrailByName(trailName, data);
+        if (!broaderResults) {
+          showLookupStatus('Trail not found. Try a different name or check spelling.', 'error');
+          btn.disabled = false;
+          return;
+        }
+        bestTrail = broaderResults;
+      }
+      if (!bestTrail) {
+        showLookupStatus('Trail not found. Try a different name or check spelling.', 'error');
+        btn.disabled = false;
+        return;
+      }
+    }
+
+    // Extract trail geometry
+    const result = extractTrailGeometry(bestTrail, nodeIndex, data);
+    if (!result || result.nodes.length < 2) {
+      showLookupStatus('Trail found but could not extract path geometry.', 'error');
+      btn.disabled = false;
+      return;
+    }
+
+    // Success! Set up the trail
+    applyTrailData(result);
+    showLookupStatus(`Found: ${result.name} (${result.nodes.length} points, ${result.type})`, 'success');
+    
+  } catch (err) {
+    console.error('Trail lookup error:', err);
+    showLookupStatus('Error: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function lookupTrailByName(name, existingData) {
+  // If existing data already has results, search within it
+  if (existingData) {
+    const matches = [];
+    (existingData.elements || []).forEach(el => {
+      if ((el.type === 'relation' || el.type === 'way') && el.tags && el.tags.name) {
+        if (el.tags.name.toLowerCase().includes(name.toLowerCase())) {
+          matches.push(el);
+        }
+      }
+    });
+    return matches[0] || null;
+  }
+  return null;
+}
+
+async function lookupNearby() {
+  const btn = document.getElementById('lookup-nearby-btn');
+  btn.disabled = true;
+  showLookupStatus('Getting your location...', 'loading');
+
+  let lat, lon;
+  try {
+    const pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 15000 });
+    });
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
+  } catch (err) {
+    showLookupStatus('Could not get your location: ' + err.message, 'error');
+    btn.disabled = false;
+    return;
+  }
+
+  showLookupStatus('Searching for trails nearby...', 'loading');
+
+  try {
+    // Search for hiking trails within ~5km
+    const query = `
+[out:json][timeout:30];
+(
+  way["highway"~"path|track|footway"]["name"](around:5000,${lat},${lon});
+  relation["route"="hike"]["name"](around:5000,${lat},${lon});
+);
+out body;
+>;
+out skel qt;
+`;
+
+    const resp = await fetch(OVERPASS_URL, {
+      method: 'POST',
+      body: 'data=' + encodeURIComponent(query),
+    });
+
+    if (!resp.ok) throw new Error(`Overpass API error: ${resp.status}`);
+    const data = await resp.json();
+
+    const nodeIndex = {};
+    data.elements.forEach(el => {
+      if (el.type === 'node') nodeIndex[el.id] = { lat: el.lat, lon: el.lon, tags: el.tags || {} };
+    });
+
+    // Collect named trails
+    const trails = [];
+    data.elements.forEach(el => {
+      if ((el.type === 'way' || el.type === 'relation') && el.tags && el.tags.name) {
+        const result = extractTrailGeometry(el, nodeIndex, data);
+        if (result && result.nodes.length >= 2) {
+          // Calculate distance from user
+          const headDist = haversine(lat, lon, result.trailhead.lat, result.trailhead.lon);
+          trails.push({ ...result, distance: headDist });
+        }
+      }
+    });
+
+    // Sort by distance
+    trails.sort((a, b) => a.distance - b.distance);
+    
+    if (trails.length === 0) {
+      showLookupStatus('No named trails found within 5km.', 'error');
+      btn.disabled = false;
+      return;
+    }
+
+    // Show results list
+    showLookupStatus(`Found ${trails.length} trail${trails.length > 1 ? 's' : ''} nearby`, 'success');
+    displayTrailResults(trails);
+
+  } catch (err) {
+    console.error('Nearby lookup error:', err);
+    showLookupStatus('Error: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function displayTrailResults(trails) {
+  const list = document.getElementById('trail-results-list');
+  const container = document.getElementById('trail-results-container');
+  const countEl = document.getElementById('trail-results-count');
+  
+  countEl.textContent = `${trails.length} trail${trails.length > 1 ? 's' : ''} found (tap to select):`;
+  container.innerHTML = '';
+  
+  trails.slice(0, 15).forEach(trail => {
+    const distMi = (trail.distance * 0.621371).toFixed(1);
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer;';
+    card.innerHTML = `
+      <div style="font-weight:600;font-size:14px;">${trail.name}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+        ${trail.type} · ${trail.nodes.length} points · ${distMi} mi away
+      </div>
+    `;
+    card.addEventListener('click', () => {
+      applyTrailData(trail);
+      list.style.display = 'none';
+      showLookupStatus(`Selected: ${trail.name}`, 'success');
+    });
+    container.appendChild(card);
+  });
+  
+  list.style.display = 'block';
+}
+
+function extractTrailGeometry(element, nodeIndex, data) {
+  const nodes = [];
+  const tags = element.tags || {};
+  const name = tags.name || tags['name:en'] || 'Unknown Trail';
+  const type = element.type; // 'way' or 'relation'
+
+  if (element.type === 'way') {
+    // Direct way — use its nodes in order
+    if (element.geometry) {
+      element.geometry.forEach(n => nodes.push({ lat: n.lat, lon: n.lon }));
+    } else if (element.nodes) {
+      element.nodes.forEach(nid => {
+        const n = nodeIndex[nid];
+        if (n) nodes.push({ lat: n.lat, lon: n.lon });
+      });
+    }
+  } else if (element.type === 'relation') {
+    // Relation — collect all member ways and stitch them
+    const memberWays = [];
+    (element.members || []).forEach(m => {
+      if (m.type === 'way') {
+        const way = data.elements.find(e => e.type === 'way' && e.id === m.ref);
+        if (way) memberWays.push(way);
+      }
+    });
+
+    if (memberWays.length === 0) {
+      // Try using node references directly from members
+      (element.members || []).forEach(m => {
+        if (m.type === 'node') {
+          const n = nodeIndex[m.ref];
+          if (n) nodes.push({ lat: n.lat, lon: n.lon });
+        }
+      });
+    } else if (memberWays.length === 1) {
+      // Single way
+      const w = memberWays[0];
+      if (w.geometry) {
+        w.geometry.forEach(n => nodes.push({ lat: n.lat, lon: n.lon }));
+      } else if (w.nodes) {
+        w.nodes.forEach(nid => {
+          const n = nodeIndex[nid];
+          if (n) nodes.push({ lat: n.lat, lon: n.lon });
+        });
+      }
+    } else {
+      // Multiple ways — stitch them together
+      const stitched = stitchWays(memberWays, nodeIndex);
+      stitched.forEach(n => nodes.push(n));
+    }
+  }
+
+  if (nodes.length < 2) return null;
+
+  // Determine trail type
+  const trailType = determineTrailType(nodes, tags);
+
+  // Find trailhead and trail end
+  const trailhead = { lat: nodes[0].lat, lon: nodes[0].lon };
+  const trailend = { lat: nodes[nodes.length - 1].lat, lon: nodes[nodes.length - 1].lon };
+
+  // For loops, find highlight/waypoint markers
+  const waypoints = extractWaypoints(nodes, trailType);
+
+  // Calculate bounds
+  let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+  nodes.forEach(n => {
+    minLat = Math.min(minLat, n.lat);
+    maxLat = Math.max(maxLat, n.lat);
+    minLon = Math.min(minLon, n.lon);
+    maxLon = Math.max(maxLon, n.lon);
+  });
+
+  return {
+    name,
+    type: trailType,
+    nodes,
+    trailhead,
+    trailend,
+    waypoints,
+    bounds: { minLat, maxLat, minLon, maxLon },
+    tags
+  };
+}
+
+function stitchWays(ways, nodeIndex) {
+  // Build adjacency: try to connect ways end-to-end
+  const wayPoints = ways.map(w => {
+    const pts = [];
+    if (w.geometry) {
+      w.geometry.forEach(n => pts.push({ lat: n.lat, lon: n.lon }));
+    } else if (w.nodes) {
+      w.nodes.forEach(nid => {
+        const n = nodeIndex[nid];
+        if (n) pts.push({ lat: n.lat, lon: n.lon });
+      });
+    }
+    return pts;
+  }).filter(pts => pts.length > 0);
+
+  if (wayPoints.length === 0) return [];
+
+  // Greedy: start with first way, try to connect matching endpoints
+  const used = new Set([0]);
+  const result = [...wayPoints[0]];
+  let front = result[0];
+  let back = result[result.length - 1];
+
+  let added = true;
+  while (added) {
+    added = false;
+    for (let i = 0; i < wayPoints.length; i++) {
+      if (used.has(i)) continue;
+      const pts = wayPoints[i];
+      const firstPt = pts[0];
+      const lastPt = pts[pts.length - 1];
+      const threshold = 0.0005; // ~50m
+
+      // Try connecting to back
+      if (haversine(back.lat, back.lon, firstPt.lat, firstPt.lon) < threshold || 
+          coordsClose(back, firstPt)) {
+        result.push(...pts);
+        back = lastPt;
+        used.add(i);
+        added = true;
+        break;
+      } else if (haversine(back.lat, back.lon, lastPt.lat, lastPt.lon) < threshold ||
+                 coordsClose(back, lastPt)) {
+        result.push(...[...pts].reverse());
+        back = firstPt;
+        used.add(i);
+        added = true;
+        break;
+      }
+      // Try connecting to front
+      else if (haversine(front.lat, front.lon, firstPt.lat, firstPt.lon) < threshold ||
+               coordsClose(front, firstPt)) {
+        result.unshift(...[...pts].reverse());
+        front = lastPt;
+        used.add(i);
+        added = true;
+        break;
+      } else if (haversine(front.lat, front.lon, lastPt.lat, lastPt.lon) < threshold ||
+                 coordsClose(front, lastPt)) {
+        result.unshift(...pts);
+        front = firstPt;
+        used.add(i);
+        added = true;
+        break;
+      }
+    }
+  }
+
+  return result;
+}
+
+function coordsClose(a, b) {
+  return Math.abs(a.lat - b.lat) < 0.00005 && Math.abs(a.lon - b.lon) < 0.00005;
+}
+
+function determineTrailType(nodes, tags) {
+  // Check if loop: start and end are close
+  const first = nodes[0];
+  const last = nodes[nodes.length - 1];
+  const loopDist = haversine(first.lat, first.lon, last.lat, last.lon);
+  
+  if (loopDist < 0.05 || coordsClose(first, last)) {
+    return 'loop';
+  }
+
+  // Check tags for hints
+  const routeType = tags['route'] || '';
+  if (routeType === 'hike' || routeType === 'foot') {
+    // Could be one-way or out-and-back
+    return 'point-to-point';
+  }
+
+  return 'out-and-back';
+}
+
+function extractWaypoints(nodes, trailType) {
+  const waypoints = [];
+  const totalPts = nodes.length;
+
+  if (trailType === 'loop') {
+    // For loop trails, add waypoints at roughly equal intervals
+    const numWaypoints = Math.min(4, Math.max(2, Math.floor(totalPts / 20)));
+    const interval = Math.floor(totalPts / numWaypoints);
+    for (let i = 0; i < numWaypoints; i++) {
+      const idx = i * interval;
+      if (idx < totalPts) {
+        waypoints.push({
+          lat: nodes[idx].lat,
+          lon: nodes[idx].lon,
+          label: `Marker ${i + 1}`
+        });
+      }
+    }
+  } else {
+    // For out-and-back / point-to-point: add a midpoint
+    if (totalPts > 4) {
+      const mid = Math.floor(totalPts / 2);
+      waypoints.push({
+        lat: nodes[mid].lat,
+        lon: nodes[mid].lon,
+        label: 'Midpoint'
+      });
+    }
+    // Add quarter points if trail is long enough
+    if (totalPts > 10) {
+      const q1 = Math.floor(totalPts * 0.25);
+      const q3 = Math.floor(totalPts * 0.75);
+      waypoints.push({ lat: nodes[q1].lat, lon: nodes[q1].lon, label: '1/4 Point' });
+      waypoints.push({ lat: nodes[q3].lat, lon: nodes[q3].lon, label: '3/4 Point' });
+    }
+  }
+
+  return waypoints;
+}
+
+function applyTrailData(trailResult) {
+  state.trailData = trailResult;
+  state.trailAligned = true;
+  state.trailBounds = trailResult.bounds;
+
+  // Hide trail results list
+  document.getElementById('trail-results-list').style.display = 'none';
+
+  // Show trail info card
+  const card = document.getElementById('trail-info-card');
+  card.classList.add('visible');
+  document.getElementById('trail-info-title').textContent = trailResult.name;
+  document.getElementById('trail-info-type').textContent = trailResult.type;
+  document.getElementById('trail-info-head').textContent = 
+    `${trailResult.trailhead.lat.toFixed(5)}, ${trailResult.trailhead.lon.toFixed(5)}`;
+  document.getElementById('trail-info-end').textContent = 
+    `${trailResult.trailend.lat.toFixed(5)}, ${trailResult.trailend.lon.toFixed(5)}`;
+  document.getElementById('trail-info-waypoints').textContent = trailResult.waypoints.length;
+  
+  const alignmentMethod = trailResult.type === 'loop' ? 'Loop markers' : 
+                          trailResult.type === 'out-and-back' ? 'Trailhead + midpoint' : 
+                          'Trailhead + trail end';
+  document.getElementById('trail-info-alignment').textContent = alignmentMethod;
+
+  // Auto-advance to Track tab (the main use case)
+  // Also enable geo-ref view to show the trail
+  document.getElementById('georef-no-map').style.display = 'none';
+  document.getElementById('georef-content').style.display = 'block';
+  
+  // We don't need manual control points — the trail data IS the reference
+  // But set up auto-alignment for the track view
+  setupTrailAutoAlign();
+}
+
+function setupTrailAutoAlign() {
+  // For the trail, we use the trail geometry directly — no manual geo-ref needed
+  // The track view will auto-center on the trail and overlay GPS position
+  // Auto-switch to track tab after a brief pause
+  updateActionBar();
+}
+
+function showLookupStatus(msg, type) {
+  const el = document.getElementById('lookup-status');
+  el.className = 'lookup-status ' + type;
+  if (type === 'loading') {
+    el.innerHTML = '<span class="spinner"></span>' + msg;
+  } else {
+    el.textContent = msg;
+  }
+}
+
+function escapeOverpass(str) {
+  return str.replace(/"/g, '\\"').replace(/'/g, "\\'");
+}
+
+function getUSABbox() {
+  // Continental USA bounding box for initial search
+  // Overpass will filter further by name
+  return '24.0,-125.0,49.0,-66.0';
+}
+
+// ===== TABS =====
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('phase-' + btn.dataset.phase).classList.add('active');
+    updateActionBar();
+    if (btn.dataset.phase === 'georef') drawGeoRefCanvas();
+    if (btn.dataset.phase === 'track') drawTrackCanvas();
+    if (btn.dataset.phase === 'review') drawReview();
+  });
+});
+
+function updateActionBar() {
+  const btn = document.getElementById('action-btn');
+  const activeTab = document.querySelector('.tab-btn.active').dataset.phase;
+  
+  if (activeTab === 'track') {
+    if (state.tracking) {
+      btn.className = 'stop'; btn.textContent = 'STOP HIKE';
+    } else {
+      btn.className = 'start'; btn.textContent = 'START HIKE';
+    }
+  } else if (activeTab === 'import' && state.mapImage) {
+    btn.className = 'start'; btn.textContent = 'USE THIS MAP';
+  } else if (activeTab === 'import' && state.trailData) {
+    btn.className = 'start'; btn.textContent = 'START TRACKING';
+  } else if (activeTab === 'review' && state.trackPoints.length > 0) {
+    btn.className = 'review'; btn.textContent = 'EXPORT HIKE';
+  } else {
+    btn.className = 'disabled'; btn.textContent = '—';
+  }
+}
+
+function handleAction() {
+  const activeTab = document.querySelector('.tab-btn.active').dataset.phase;
+  if (activeTab === 'track') {
+    if (state.tracking) stopTracking(); else startTracking();
+  } else if (activeTab === 'import' && state.mapImage) {
+    switchTab('georef');
+  } else if (activeTab === 'import' && state.trailData) {
+    switchTab('track');
+  } else if (activeTab === 'review' && state.trackPoints.length > 0) {
+    exportImage();
+  }
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.phase === name);
+  });
+  document.querySelectorAll('.phase').forEach(p => {
+    p.classList.toggle('active', p.id === 'phase-' + name);
+  });
+  updateActionBar();
+  if (name === 'georef') drawGeoRefCanvas();
+  if (name === 'track') drawTrackCanvas();
+}
+
+// ===== MAP IMPORT =====
+function pickMapImage() {
+  document.getElementById('file-input').click();
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    state.mapDataURL = ev.target.result;
+    const img = new Image();
+    img.onload = () => {
+      state.mapImage = img;
+      const preview = document.getElementById('map-preview');
+      preview.src = state.mapDataURL;
+      preview.style.display = 'block';
+      document.getElementById('import-area').classList.add('loaded');
+      document.getElementById('map-info').style.display = 'block';
+      document.getElementById('map-dims').textContent = `${img.naturalWidth} × ${img.naturalHeight}px`;
+      // Show georef content
+      document.getElementById('georef-no-map').style.display = 'none';
+      document.getElementById('georef-content').style.display = 'block';
+      updateActionBar();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ===== GEO-REFERENCE =====
+function drawGeoRefCanvas() {
+  // If we have trail data (from auto-lookup), show the trail path instead
+  if (state.trailData && !state.mapImage) {
+    drawTrailPreview();
+    return;
+  }
+  
+  if (!state.mapImage) return;
+  const canvas = document.getElementById('map-canvas');
+  const container = document.getElementById('map-canvas-container');
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  canvas.width = w * 2; canvas.height = h * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  
+  // Draw map
+  const imgAspect = state.mapImage.naturalWidth / state.mapImage.naturalHeight;
+  const canvasAspect = w / h;
+  let dw, dh, dx, dy;
+  if (imgAspect > canvasAspect) {
+    dw = w; dh = w / imgAspect; dx = 0; dy = (h - dh) / 2;
+  } else {
+    dh = h; dw = h * imgAspect; dx = (w - dw) / 2; dy = 0;
+  }
+  ctx.drawImage(state.mapImage, dx, dy, dw, dh);
+  
+  // Store draw params for coordinate mapping
+  state._geoDraw = { dx, dy, dw, dh };
+  
+  // Draw existing control points
+  state.controlPoints.forEach((cp, i) => {
+    const px = dx + (cp.px / state.mapImage.naturalWidth) * dw;
+    const py = dy + (cp.py / state.mapImage.naturalHeight) * dh;
+    drawPin(ctx, px, py, i + 1);
+  });
+  
+  // Draw pending point
+  if (state.pendingPixel) {
+    const px = dx + (state.pendingPixel.x / state.mapImage.naturalWidth) * dw;
+    const py = dy + (state.pendingPixel.y / state.mapImage.naturalHeight) * dh;
+    drawPin(ctx, px, py, state.controlPoints.length + 1, true);
+  }
+}
+
+function drawTrailPreview() {
+  const canvas = document.getElementById('map-canvas');
+  const container = document.getElementById('map-canvas-container');
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  canvas.width = w * 2; canvas.height = h * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+
+  const trail = state.trailData;
+  const b = trail.bounds;
+  
+  // Add padding
+  const padLat = (b.maxLat - b.minLat) * 0.15 || 0.005;
+  const padLon = (b.maxLon - b.minLon) * 0.15 || 0.005;
+  const rangeLat = (b.maxLat - b.minLat) + padLat * 2;
+  const rangeLon = (b.maxLon - b.minLon) + padLon * 2;
+
+  const toCanvas = (lat, lon) => ({
+    x: ((lon - b.minLon + padLon) / rangeLon) * (w - 20) + 10,
+    y: h - (((lat - b.minLat + padLat) / rangeLat) * (h - 20) + 10)
+  });
+
+  // Background
+  ctx.fillStyle = '#1e2a1e';
+  ctx.fillRect(0, 0, w, h);
+
+  // Draw grid lines
+  ctx.strokeStyle = 'rgba(74, 222, 128, 0.1)';
+  ctx.lineWidth = 1;
+  const latStep = rangeLat / 8;
+  const lonStep = rangeLon / 8;
+  for (let i = 0; i <= 8; i++) {
+    const lat = b.minLat - padLat + i * latStep;
+    const p = toCanvas(lat, b.minLon);
+    ctx.beginPath(); ctx.moveTo(0, p.y); ctx.lineTo(w, p.y); ctx.stroke();
+    const lon = b.minLon - padLon + i * lonStep;
+    const p2 = toCanvas(b.minLat, lon);
+    ctx.beginPath(); ctx.moveTo(p2.x, 0); ctx.lineTo(p2.x, h); ctx.stroke();
+  }
+
+  // Draw trail path
+  ctx.strokeStyle = '#4ade80';
+  ctx.lineWidth = 3;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  trail.nodes.forEach((n, i) => {
+    const p = toCanvas(n.lat, n.lon);
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  });
+  ctx.stroke();
+
+  // Draw trailhead
+  const head = toCanvas(trail.trailhead.lat, trail.trailhead.lon);
+  ctx.beginPath();
+  ctx.arc(head.x, head.y, 10, 0, Math.PI * 2);
+  ctx.fillStyle = '#4ade80';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#1a1a1a';
+  ctx.font = 'bold 10px system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('TH', head.x, head.y);
+
+  // Draw trail end (if not a loop)
+  if (trail.type !== 'loop') {
+    const end = toCanvas(trail.trailend.lat, trail.trailend.lon);
+    ctx.beginPath();
+    ctx.arc(end.x, end.y, 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#ef4444';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 9px system-ui';
+    ctx.fillText('END', end.x, end.y);
+  }
+
+  // Draw waypoints
+  trail.waypoints.forEach((wp, i) => {
+    const p = toCanvas(wp.lat, wp.lon);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
+
+  // Trail name label
+  ctx.fillStyle = '#4ade80';
+  ctx.font = 'bold 14px system-ui';
+  ctx.textAlign = 'left';
+  ctx.fillText(trail.name, 12, 20);
+  
+  ctx.fillStyle = '#888';
+  ctx.font = '11px system-ui';
+  ctx.fillText(trail.type + ' trail · ' + trail.nodes.length + ' points', 12, 36);
+}
+
+function drawPin(ctx, x, y, num, pending = false) {
+  ctx.beginPath();
+  ctx.arc(x, y, 14, 0, Math.PI * 2);
+  ctx.fillStyle = pending ? 'rgba(245,158,11,0.7)' : '#f59e0b';
+  ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#1a1a1a'; ctx.font = 'bold 12px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(num, x, y);
+}
+
+// Canvas click for adding points
+document.getElementById('map-canvas').addEventListener('click', (e) => {
+  if (!state.addingPoint || !state.mapImage || !state._geoDraw) return;
+  const rect = e.target.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+  const { dx, dy, dw, dh } = state._geoDraw;
+  
+  // Convert canvas click to image pixel coords
+  const imgX = ((cx - dx) / dw) * state.mapImage.naturalWidth;
+  const imgY = ((cy - dy) / dh) * state.mapImage.naturalHeight;
+  
+  if (imgX < 0 || imgX > state.mapImage.naturalWidth || imgY < 0 || imgY > state.mapImage.naturalHeight) return;
+  
+  state.pendingPixel = { x: imgX, y: imgY };
+  drawGeoRefCanvas();
+  showModal(state.controlPoints.length + 1);
+});
+
+function enterAddPointMode() {
+  state.addingPoint = true;
+  alert('Tap a known location on the map to place a control point.');
+}
+
+function showModal(num) {
+  document.getElementById('modal-pt-num').textContent = num;
+  document.getElementById('input-lat').value = '';
+  document.getElementById('input-lon').value = '';
+  document.getElementById('geo-modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('geo-modal').classList.remove('show');
+  state.addingPoint = false;
+  state.pendingPixel = null;
+  drawGeoRefCanvas();
+}
+
+function confirmPoint() {
+  const lat = parseFloat(document.getElementById('input-lat').value);
+  const lon = parseFloat(document.getElementById('input-lon').value);
+  if (isNaN(lat) || isNaN(lon)) { alert('Enter valid lat/lon'); return; }
+  
+  state.controlPoints.push({
+    px: state.pendingPixel.x,
+    py: state.pendingPixel.y,
+    lat, lon
+  });
+  
+  state.pendingPixel = null;
+  state.addingPoint = false;
+  closeModal();
+  renderCtrlPoints();
+  drawGeoRefCanvas();
+}
+
+async function useCurrentGPS() {
+  try {
+    const pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
+    });
+    document.getElementById('input-lat').value = pos.coords.latitude.toFixed(6);
+    document.getElementById('input-lon').value = pos.coords.longitude.toFixed(6);
+  } catch (err) {
+    alert('Could not get GPS: ' + err.message);
+  }
+}
+
+function renderCtrlPoints() {
+  const container = document.getElementById('ctrl-points');
+  container.innerHTML = '';
+  state.controlPoints.forEach((cp, i) => {
+    const row = document.createElement('div');
+    row.className = 'ctrl-point-row';
+    row.innerHTML = `
+      <div class="ctrl-point-num">${i + 1}</div>
+      <div class="ctrl-point-coords">${cp.lat.toFixed(5)}, ${cp.lon.toFixed(5)}</div>
+      <button class="ctrl-point-remove" onclick="removePoint(${i})">×</button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function removePoint(i) {
+  state.controlPoints.splice(i, 1);
+  renderCtrlPoints();
+  drawGeoRefCanvas();
+}
+
+function alignMap() {
+  if (state.controlPoints.length < 2) {
+    alert('Add at least 2 control points to align the map.');
+    return;
+  }
+  computeGeoTransform();
+  alert('Map aligned! You can now switch to Track to start hiking.');
+  switchTab('track');
+}
+
+function computeGeoTransform() {
+  const pts = state.controlPoints;
+  if (pts.length === 2) {
+    // Compute scale, rotation, translation
+    const dx_img = pts[1].px - pts[0].px;
+    const dy_img = pts[1].py - pts[0].py;
+    const dlat = pts[1].lat - pts[0].lat;
+    const dlon = pts[1].lon - pts[0].lon;
+    
+    const imgDist = Math.sqrt(dx_img * dx_img + dy_img * dy_img);
+    const geoDist = Math.sqrt(dlat * dlat + dlon * dlon);
+    
+    if (imgDist === 0) return;
+    
+    const scale = geoDist / imgDist;
+    const imgAngle = Math.atan2(dy_img, dx_img);
+    const geoAngle = Math.atan2(dlat, dlon);
+    const rotation = geoAngle - imgAngle;
+    
+    state.geoTransform = {
+      type: 'affine',
+      origin: { px: pts[0].px, py: pts[0].py, lat: pts[0].lat, lon: pts[0].lon },
+      scale, rotation
+    };
+  } else if (pts.length >= 3) {
+    // Least-squares affine: [lat, lon] = A * [px, py] + b
+    const n = pts.length;
+    let sumX = 0, sumY = 0, sumXX = 0, sumYY = 0, sumXY = 0;
+    let sumXL = 0, sumYL = 0, sumXO = 0, sumYO = 0;
+    
+    pts.forEach(p => {
+      sumX += p.px; sumY += p.py;
+      sumXX += p.px * p.px; sumYY += p.py * p.py;
+      sumXY += p.px * p.py;
+      sumXL += p.px * p.lat; sumYL += p.py * p.lat;
+      sumXO += p.px * p.lon; sumYO += p.py * p.lon;
+    });
+    
+    const det = sumXX * sumYY - sumXY * sumXY + 1e-10;
+    const aLat = (sumXL * sumYY - sumYL * sumXY) / det;
+    const bLat = (sumYL * sumXX - sumXL * sumXY) / det;
+    const cLat = (sumL(n, pts, aLat, bLat, 'lat'));
+    
+    const aLon = (sumXO * sumYY - sumYO * sumXY) / det;
+    const bLon = (sumYO * sumXX - sumXO * sumXY) / det;
+    const cLon = (sumL(n, pts, aLon, bLon, 'lon'));
+    
+    state.geoTransform = {
+      type: 'least-squares',
+      aLat, bLat, cLat, aLon, bLon, cLon
+    };
+  }
+}
+
+function sumL(n, pts, a, b, field) {
+  let s = 0;
+  pts.forEach(p => { s += p[field] - a * p.px - b * p.py; });
+  return s / n;
+}
+
+function imgToGeo(px, py) {
+  if (!state.geoTransform) return null;
+  const t = state.geoTransform;
+  if (t.type === 'affine') {
+    const dx = px - t.origin.px;
+    const dy = py - t.origin.py;
+    const cosR = Math.cos(t.rotation);
+    const sinR = Math.sin(t.rotation);
+    return {
+      lat: t.origin.lat + t.scale * (dx * cosR - dy * sinR),
+      lon: t.origin.lon + t.scale * (dx * sinR + dy * cosR)
+    };
+  } else {
+    return {
+      lat: t.aLat * px + t.bLat * py + t.cLat,
+      lon: t.aLon * px + t.bLon * py + t.cLon
+    };
+  }
+}
+
+function geoToImg(lat, lon) {
+  if (!state.geoTransform) return null;
+  const t = state.geoTransform;
+  if (t.type === 'affine') {
+    const dlat = lat - t.origin.lat;
+    const dlon = lon - t.origin.lon;
+    const cosR = Math.cos(-t.rotation);
+    const sinR = Math.sin(-t.rotation);
+    const scaledLat = dlat / t.scale;
+    const scaledLon = dlon / t.scale;
+    return {
+      x: t.origin.px + (scaledLat * cosR - scaledLon * sinR),
+      y: t.origin.py + (scaledLat * sinR + scaledLon * cosR)
+    };
+  } else {
+    // Invert 2x3 affine (approximate)
+    const det = t.aLat * t.bLon - t.bLat * t.aLon + 1e-10;
+    const px = (t.bLon * (lat - t.cLat) - t.bLat * (lon - t.cLon)) / det;
+    const py = (t.aLat * (lon - t.cLon) - t.aLon * (lat - t.cLat)) / det;
+    return { x: px, y: py };
+  }
+}
+
+// ===== GPS TRACKING =====
+function startTracking() {
+  if (!navigator.geolocation) { alert('Geolocation not supported'); return; }
+  
+  state.tracking = true;
+  state.trackPoints = [];
+  state.startTime = Date.now();
+  state.totalDistance = 0;
+  state.elevationGain = 0;
+  state.elevationLoss = 0;
+  
+  document.getElementById('track-status').textContent = 'Tracking...';
+  const btn = document.getElementById('action-btn');
+  btn.className = 'start recording';
+  btn.textContent = 'STOP HIKE';
+  
+  state.watchId = navigator.geolocation.watchPosition(
+    onPosition,
+    (err) => {
+      console.error('GPS error:', err);
+      document.getElementById('gps-accuracy').textContent = 'Error';
+      updateGpsBars(0);
+    },
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
+  );
+  
+  state.timerInterval = setInterval(updateTimer, 1000);
+}
+
+function stopTracking() {
+  state.tracking = false;
+  if (state.watchId !== null) navigator.geolocation.clearWatch(state.watchId);
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  
+  const btn = document.getElementById('action-btn');
+  btn.className = 'start';
+  btn.textContent = 'START HIKE';
+  document.getElementById('track-status').textContent = 'Hike stopped';
+  
+  // Save to localStorage
+  try {
+    localStorage.setItem('lastHike', JSON.stringify({
+      points: state.trackPoints,
+      distance: state.totalDistance,
+      startTime: state.startTime,
+      endTime: Date.now()
+    }));
+  } catch (e) {}
+  
+  // Show review
+  if (state.trackPoints.length > 0) {
+    document.getElementById('review-no-data').style.display = 'none';
+    document.getElementById('review-content').style.display = 'block';
+    drawReview();
+    switchTab('review');
+  }
+}
+
+function onPosition(pos) {
+  const { latitude: lat, longitude: lon, altitude: alt, accuracy } = pos.coords;
+  state.lastGpsAccuracy = accuracy;
+  
+  // Update GPS indicator
+  updateGpsBars(accuracy);
+  document.getElementById('gps-accuracy').textContent = accuracy ? `±${Math.round(accuracy)}m` : 'GPS';
+  
+  const point = { lat, lon, alt: alt || 0, time: Date.now() };
+  state.trackPoints.push(point);
+  
+  // Calculate distance
+  if (state.trackPoints.length > 1) {
+    const prev = state.trackPoints[state.trackPoints.length - 2];
+    const d = haversine(prev.lat, prev.lon, lat, lon);
+    // Only add if accuracy is reasonable and distance isn't crazy
+    if (accuracy && accuracy < 50 && d < 0.5) {
+      state.totalDistance += d;
+      // Elevation
+      if (prev.alt && point.alt) {
+        const elevDiff = point.alt - prev.alt;
+        if (elevDiff > 0) state.elevationGain += elevDiff;
+        else state.elevationLoss += Math.abs(elevDiff);
+      }
+    }
+  }
+  
+  // Update UI
+  const dist = state.units === 'mi' ? state.totalDistance * 0.621371 : state.totalDistance;
+  document.getElementById('stat-distance').textContent = dist.toFixed(2);
+  document.getElementById('current-distance').textContent = dist.toFixed(2) + ' ' + state.units;
+  
+  if (point.alt) {
+    document.getElementById('stat-elev').textContent = Math.round(point.alt * 3.28084);
+  }
+  
+  drawTrackCanvas();
+}
+
+function updateGpsBars(accuracy) {
+  const bars = [document.getElementById('bar1'), document.getElementById('bar2'), document.getElementById('bar3'), document.getElementById('bar4')];
+  let level = 0;
+  if (accuracy !== null && accuracy !== undefined) {
+    if (accuracy <= 5) level = 4;
+    else if (accuracy <= 15) level = 3;
+    else if (accuracy <= 30) level = 2;
+    else if (accuracy <= 100) level = 1;
+  }
+  bars.forEach((b, i) => b.classList.toggle('active', i < level));
+}
+
+function updateTimer() {
+  if (!state.startTime) return;
+  const elapsed = Date.now() - state.startTime;
+  const s = Math.floor(elapsed / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const timeStr = h > 0 
+    ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    : `${m}:${String(sec).padStart(2, '0')}`;
+  document.getElementById('elapsed-time').textContent = 
+    `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  document.getElementById('stat-time').textContent = timeStr;
+}
+
+// ===== TRACK CANVAS =====
+function drawTrackCanvas() {
+  const canvas = document.getElementById('track-canvas');
+  const container = document.getElementById('track-map-container');
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  canvas.width = w * 2; canvas.height = h * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  ctx.fillStyle = '#2a2a2a';
+  ctx.fillRect(0, 0, w, h);
+
+  // Determine which reference to use for drawing
+  let hasReference = false;
+  let drawFn;
+  let trailForOverlay = null;
+  
+  if (state.trailData) {
+    // Use trail data as the reference map
+    hasReference = true;
+    trailForOverlay = state.trailData;
+    
+    const b = trailForOverlay.bounds;
+    const padLat = (b.maxLat - b.minLat) * 0.15 || 0.005;
+    const padLon = (b.maxLon - b.minLon) * 0.15 || 0.005;
+    const rangeLat = (b.maxLat - b.minLat) + padLat * 2;
+    const rangeLon = (b.maxLon - b.minLon) + padLon * 2;
+    
+    drawFn = (p) => ({
+      x: ((p.lon - b.minLon + padLon) / rangeLon) * (w - 40) + 20,
+      y: h - (((p.lat - b.minLat + padLat) / rangeLat) * (h - 40) + 20)
+    });
+    
+    // Draw grid
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.08)';
+    ctx.lineWidth = 1;
+    const gridSteps = 8;
+    for (let i = 0; i <= gridSteps; i++) {
+      const lat = b.minLat - padLat + i * rangeLat / gridSteps;
+      const p = drawFn({ lat, lon: b.minLon });
+      ctx.beginPath(); ctx.moveTo(0, p.y); ctx.lineTo(w, p.y); ctx.stroke();
+      const lon = b.minLon - padLon + i * rangeLon / gridSteps;
+      const p2 = drawFn({ lat: b.minLat, lon });
+      ctx.beginPath(); ctx.moveTo(p2.x, 0); ctx.lineTo(p2.x, h); ctx.stroke();
+    }
+    
+    // Draw trail path (reference)
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+    ctx.lineWidth = 4;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.setLineDash([8, 4]);
+    ctx.beginPath();
+    trailForOverlay.nodes.forEach((n, i) => {
+      const p = drawFn(n);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Draw trailhead marker
+    const th = drawFn(trailForOverlay.trailhead);
+    ctx.beginPath();
+    ctx.arc(th.x, th.y, 10, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(74, 222, 128, 0.6)';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 9px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('TH', th.x, th.y);
+    
+    // Draw trail end (if not loop)
+    if (trailForOverlay.type !== 'loop') {
+      const te = drawFn(trailForOverlay.trailend);
+      ctx.beginPath();
+      ctx.arc(te.x, te.y, 8, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.6)';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    
+    // Draw waypoints
+    trailForOverlay.waypoints.forEach(wp => {
+      const p = drawFn(wp);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.5)';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+    
+  } else if (state.mapImage && state.geoTransform) {
+    // Use imported map as reference
+    hasReference = true;
+    const params = getMapDrawParams(w, h);
+    if (params) {
+      ctx.globalAlpha = 0.4;
+      ctx.drawImage(state.mapImage, params.dx, params.dy, params.dw, params.dh);
+      ctx.globalAlpha = 1;
+    }
+    
+    drawFn = (p) => {
+      const img = geoToImg(p.lat, p.lon);
+      if (!img || !state.mapImage) return null;
+      const { dx, dy, dw, dh } = getMapDrawParams(w, h);
+      return {
+        x: dx + (img.x / state.mapImage.naturalWidth) * dw,
+        y: dy + (img.y / state.mapImage.naturalHeight) * dh
+      };
+    };
+  }
+
+  // If no track points yet, show message
+  if (state.trackPoints.length === 0) {
+    ctx.fillStyle = '#888';
+    ctx.font = '14px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(hasReference ? 'Press START to begin tracking' : 'GPS track will appear here', w / 2, h / 2);
+    return;
+  }
+  
+  // If no reference, auto-fit to GPS track
+  if (!hasReference) {
+    const pts = state.trackPoints;
+    let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+    pts.forEach(p => {
+      minLat = Math.min(minLat, p.lat); maxLat = Math.max(maxLat, p.lat);
+      minLon = Math.min(minLon, p.lon); maxLon = Math.max(maxLon, p.lon);
+    });
+    const padLat = (maxLat - minLat) * 0.1 || 0.001;
+    const padLon = (maxLon - minLon) * 0.1 || 0.001;
+    const rangeLat = (maxLat - minLat) + padLat * 2 || 0.01;
+    const rangeLon = (maxLon - minLon) + padLon * 2 || 0.01;
+    
+    drawFn = (p) => ({
+      x: ((p.lon - minLon + padLon) / rangeLon) * (w - 40) + 20,
+      y: h - (((p.lat - minLat + padLat) / rangeLat) * (h - 40) + 20)
+    });
+  }
+  
+  // Draw GPS track line
+  const pts = state.trackPoints;
+  ctx.strokeStyle = '#4ade80';
+  ctx.lineWidth = 3;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  
+  let first = true;
+  pts.forEach(p => {
+    const pt = drawFn(p);
+    if (!pt) return;
+    if (first) { ctx.moveTo(pt.x, pt.y); first = false; }
+    else ctx.lineTo(pt.x, pt.y);
+  });
+  ctx.stroke();
+  
+  // Draw start point
+  const startPt = drawFn(pts[0]);
+  if (startPt) {
+    ctx.beginPath();
+    ctx.arc(startPt.x, startPt.y, 8, 0, Math.PI * 2);
+    ctx.fillStyle = '#4ade80';
+    ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#1a1a1a'; ctx.font = 'bold 10px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('S', startPt.x, startPt.y);
+  }
+  
+  // Draw current point
+  const lastPt = drawFn(pts[pts.length - 1]);
+  if (lastPt) {
+    ctx.beginPath();
+    ctx.arc(lastPt.x, lastPt.y, 8, 0, Math.PI * 2);
+    ctx.fillStyle = state.tracking ? '#ef4444' : '#f59e0b';
+    ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+  }
+}
+
+function getMapDrawParams(canvasW, canvasH) {
+  if (!state.mapImage) return null;
+  const imgAspect = state.mapImage.naturalWidth / state.mapImage.naturalHeight;
+  const canvasAspect = canvasW / canvasH;
+  let dw, dh, dx, dy;
+  if (imgAspect > canvasAspect) {
+    dw = canvasW; dh = canvasW / imgAspect; dx = 0; dy = (canvasH - dh) / 2;
+  } else {
+    dh = canvasH; dw = canvasH * imgAspect; dx = (canvasW - dw) / 2; dy = 0;
+  }
+  return { dx, dy, dw, dh };
+}
+
+// ===== REVIEW =====
+function drawReview() {
+  const pts = state.trackPoints;
+  if (pts.length === 0) return;
+  
+  // Fill review stats
+  const dist = state.units === 'mi' ? state.totalDistance * 0.621371 : state.totalDistance;
+  document.getElementById('rev-distance').textContent = dist.toFixed(2) + ' ' + state.units;
+  
+  const elapsedMs = (state.trackPoints.length > 0 ? pts[pts.length - 1].time : Date.now()) - state.startTime;
+  const elapsedS = Math.floor(elapsedMs / 1000);
+  const h = Math.floor(elapsedS / 3600);
+  const m = Math.floor((elapsedS % 3600) / 60);
+  document.getElementById('rev-time').textContent = h > 0 ? `${h}h ${m}m` : `${m}m`;
+  
+  const hours = elapsedMs / 3600000;
+  const speed = hours > 0 ? dist / hours : 0;
+  document.getElementById('rev-speed').textContent = speed.toFixed(1) + ' ' + state.units + '/h';
+  document.getElementById('rev-points').textContent = pts.length;
+  
+  // Draw review canvas
+  const canvas = document.getElementById('review-canvas');
+  const container = canvas.parentElement;
+  const w = container.clientWidth;
+  const h2 = container.clientHeight;
+  canvas.width = w * 2; canvas.height = h2 * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  ctx.fillStyle = '#2a2a2a';
+  ctx.fillRect(0, 0, w, h2);
+
+  // If trail data, draw it as reference
+  let drawFn;
+  if (state.trailData) {
+    const trail = state.trailData;
+    const b = trail.bounds;
+    const padLat = (b.maxLat - b.minLat) * 0.15 || 0.005;
+    const padLon = (b.maxLon - b.minLon) * 0.15 || 0.005;
+    const rangeLat = (b.maxLat - b.minLat) + padLat * 2;
+    const rangeLon = (b.maxLon - b.minLon) + padLon * 2;
+
+    drawFn = (p) => ({
+      x: ((p.lon - b.minLon + padLon) / rangeLon) * (w - 40) + 20,
+      y: h2 - (((p.lat - b.minLat + padLat) / rangeLat) * (h2 - 40) + 20)
+    });
+
+    // Draw trail reference (dashed)
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+    ctx.lineWidth = 4;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.setLineDash([8, 4]);
+    ctx.beginPath();
+    trail.nodes.forEach((n, i) => {
+      const p = drawFn(n);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else {
+    // Auto-fit to GPS track
+    let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+    pts.forEach(p => {
+      minLat = Math.min(minLat, p.lat); maxLat = Math.max(maxLat, p.lat);
+      minLon = Math.min(minLon, p.lon); maxLon = Math.max(maxLon, p.lon);
+    });
+    const padLat = (maxLat - minLat) * 0.1 || 0.001;
+    const padLon = (maxLon - minLon) * 0.1 || 0.001;
+    const rangeLat = (maxLat - minLat) + padLat * 2 || 0.01;
+    const rangeLon = (maxLon - minLon) + padLon * 2 || 0.01;
+    
+    drawFn = (p) => ({
+      x: ((p.lon - minLon + padLon) / rangeLon) * (w - 40) + 20,
+      y: h2 - (((p.lat - minLat + padLat) / rangeLat) * (h2 - 40) + 20)
+    });
+  }
+  
+  // Draw GPS track
+  ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 3;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  pts.forEach((p, i) => {
+    const pt = drawFn(p);
+    if (i === 0) ctx.moveTo(pt.x, pt.y);
+    else ctx.lineTo(pt.x, pt.y);
+  });
+  ctx.stroke();
+  
+  // Start/end markers
+  const start = drawFn(pts[0]);
+  const end = drawFn(pts[pts.length - 1]);
+  [start, end].forEach((pt, idx) => {
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2);
+    ctx.fillStyle = idx === 0 ? '#4ade80' : '#ef4444';
+    ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#1a1a1a'; ctx.font = 'bold 10px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(idx === 0 ? 'S' : 'E', pt.x, pt.y);
+  });
+}
+
+function exportImage() {
+  const canvas = document.getElementById('review-canvas');
+  const link = document.createElement('a');
+  link.download = 'hike-' + new Date().toISOString().slice(0, 10) + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function newHike() {
+  state.trackPoints = [];
+  state.totalDistance = 0;
+  state.startTime = null;
+  state.elevationGain = 0;
+  state.elevationLoss = 0;
+  state.tracking = false;
+  document.getElementById('review-no-data').style.display = '';
+  document.getElementById('review-content').style.display = 'none';
+  switchTab('track');
+  updateActionBar();
+}
+
+function setUnits(u, btn) {
+  state.units = u;
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('stat-dist-unit').textContent = u;
+  // Refresh displayed distance
+  const dist = u === 'mi' ? state.totalDistance * 0.621371 : state.totalDistance;
+  document.getElementById('stat-distance').textContent = dist.toFixed(2);
+}
+
+// ===== HAVERSINE =====
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ===== PERSISTENCE =====
+(function restoreMap() {
+  try {
+    const saved = localStorage.getItem('hikeMap');
+    if (saved) {
+      const img = new Image();
+      img.onload = () => {
+        state.mapImage = img;
+        state.mapDataURL = saved;
+        const preview = document.getElementById('map-preview');
+        preview.src = saved;
+        preview.style.display = 'block';
+        document.getElementById('import-area').classList.add('loaded');
+        document.getElementById('map-info').style.display = 'block';
+        document.getElementById('map-dims').textContent = `${img.naturalWidth} × ${img.naturalHeight}px`;
+        document.getElementById('georef-no-map').style.display = 'none';
+        document.getElementById('georef-content').style.display = 'block';
+        updateActionBar();
+      };
+      img.src = saved;
+    }
+  } catch (e) {}
+})();
+
+// Save map to localStorage when imported
+new MutationObserver(() => {
+  if (state.mapDataURL) {
+    try { localStorage.setItem('hikeMap', state.mapDataURL); } catch (e) {}
+  }
+}).observe(document.getElementById('import-area'), { attributes: true, subtree: true });
+</script>
+</body>
+</html>
