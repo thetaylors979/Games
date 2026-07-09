@@ -563,6 +563,9 @@ function renderFretboard() {
           circle.classList.add('filled-wrong');
         }
       }
+      if (state.correctMarks[key] && state.showAnswers) {
+        circle.classList.add('show-answer');
+      }
       if (state.correctMarks[key] && state.mode !== 'flashcard' && state.mode !== 'freedraw') {
         // Show correct answers in reverse mode after answering
       }
