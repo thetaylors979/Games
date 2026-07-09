@@ -251,7 +251,7 @@ select{
 <header>
   <h1>🎸 <span class="pick">Fretboard</span> Trainer</h1>
   <div class="header-actions">
-    <a href="http://100.124.6.90:8080/" class="icon-btn" title="Return to Launcher" style="text-decoration:none">🏠</a>
+    <a href="../" class="icon-btn" title="Return to Launcher" style="text-decoration:none">🏠</a>
     <button class="icon-btn" id="btnStats" title="Progress">📊</button>
     <button class="icon-btn" id="btnSettings" title="Settings">⚙️</button>
     <button class="icon-btn" id="btnDarkMode" title="Dark Mode">🌙</button>
@@ -639,10 +639,10 @@ function renderFretboard() {
     const x = B.x + (f - 0.5) * fretSpacing;
     const text = document.createElementNS(SVG_NS, 'text');
     text.setAttribute('x', x);
-    text.setAttribute('y', B.y + B.topMargin + B.h + 18);
+    text.setAttribute('y', 352);
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('fill', state.darkMode ? '#a09080' : '#6b5e4a');
-    text.setAttribute('font-size', '13');
+    text.setAttribute('font-size', '15');
     text.setAttribute('font-weight', '600');
     text.setAttribute('font-family', 'system-ui,sans-serif');
     text.textContent = f;
