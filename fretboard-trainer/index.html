@@ -745,10 +745,6 @@ function checkFlashcard() {
   } else {
     state.streak = 0;
     trackNoteStat(state.currentNote, false);
-    // Show correct positions
-    for (const key of correctKeys) {
-      state.correctMarks[key] = true;
-    }
     showToast(`${correct} correct, ${wrong} wrong, ${missed} missed`);
   }
 
@@ -957,6 +953,7 @@ function renderControlPanel() {
     <div class="stat"><div class="stat-value">${state.streak}</div><div class="stat-label">Streak</div></div>
     <div class="stat"><div class="stat-value">${state.bestStreak}</div><div class="stat-label">Best</div></div>
     <div class="stat"><div class="stat-value">${state.totalAttempts > 0 ? Math.round(state.correctAttempts/state.totalAttempts*100) : 0}%</div><div class="stat-label">Accuracy</div></div>
+    <button class="btn btn-secondary btn-sm" onclick="resetStats()" style="height:100%;align-self:stretch">🔄 Reset</button>
   </div>`;
 
   switch (state.mode) {
@@ -1249,7 +1246,7 @@ function resetStats() {
     state.correctAttempts = 0;
     state.score = 0;
     saveState();
-    renderStats();
+    renderControlPanel();
   }
 }
 
