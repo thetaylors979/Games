@@ -974,14 +974,16 @@ function renderFlashcardPanel() {
     <div class="flashcard" onclick="playNote('${state.currentNote}',3)">${state.currentNote}</div>
     <div class="flashcard-controls">
       <button class="btn btn-primary" onclick="checkFlashcard()">✓ Check</button>
-      <button class="btn btn-secondary btn-sm" onclick="toggleShowAnswers()">${state.showAnswers ? '🙈 Hide' : '👁️ Show'} Answers</button>
       <button class="btn btn-secondary" onclick="newFlashcard()">🔄 Next Card</button>
-      <button class="btn btn-secondary btn-sm" onclick="showChart()">📊 Chart</button>
     </div>
   </div>
   <p style="text-align:center;color:var(--text-secondary);font-size:0.85rem">
     Tap all positions where <strong>${state.currentNote}</strong> appears on the fretboard
-  </p>`;
+  </p>
+  <div style="text-align:center;margin-top:4px">
+    <button class="btn btn-secondary btn-sm" onclick="toggleShowAnswers()">${state.showAnswers ? '🙈 Hide' : '👁️ Show'} Answers</button>
+    <button class="btn btn-secondary btn-sm" onclick="showChart()">📊 Chart</button>
+  </div>`;
 }
 
 function renderReversePanel() {
