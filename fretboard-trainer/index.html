@@ -74,8 +74,8 @@ main{
 
 /* ===== FRETBOARD CONTAINER ===== */
 .fretboard-wrap{
-  width:100%; max-width:800px; background:var(--surface); border-radius:var(--radius);
-  box-shadow:var(--shadow-lg); padding:16px 12px 12px; position:relative;
+  width:100%; max-width:100%; background:var(--surface); border-radius:var(--radius);
+  box-shadow:var(--shadow-lg); padding:8px 4px 4px; position:relative;
   overflow-x:auto; -webkit-overflow-scrolling:touch;
 }
 .fretboard-wrap.flipped{direction:rtl}
@@ -107,7 +107,7 @@ main{
 
 /* ===== CONTROL PANEL ===== */
 .control-panel{
-  width:100%; max-width:800px; background:var(--surface); border-radius:var(--radius);
+  width:100%; max-width:100%; background:var(--surface); border-radius:var(--radius);
   box-shadow:var(--shadow); padding:16px; display:flex; flex-direction:column; gap:12px;
 }
 
@@ -238,7 +238,7 @@ select{
 @media(max-width:640px){
   header h1{font-size:0.95rem}
   .mode-tab{padding:6px 10px;font-size:0.7rem}
-  .fretboard-wrap{padding:8px 6px 6px}
+  .fretboard-wrap{padding:4px 2px 2px}
   .flashcard{width:64px;height:80px;font-size:1.5rem}
   .note-btn{width:36px;height:36px;font-size:0.65rem}
   .stat{padding:6px 10px}
@@ -451,7 +451,7 @@ function getRandomPosition() {
 
 // ===== SVG RENDERING =====
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const BOARD = { x: 50, y: 20, w: 700, h: 270, topMargin: 16 };
+const BOARD = { x: 30, y: 4, w: 740, h: 310, topMargin: 8 };
 
 function renderFretboard() {
   const svg = document.getElementById('fretboardSvg');
@@ -639,7 +639,7 @@ function renderFretboard() {
     const x = B.x + (f - 0.5) * fretSpacing;
     const text = document.createElementNS(SVG_NS, 'text');
     text.setAttribute('x', x);
-    text.setAttribute('y', 352);
+    text.setAttribute('y', 355);
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('fill', state.darkMode ? '#a09080' : '#6b5e4a');
     text.setAttribute('font-size', '15');
@@ -652,7 +652,7 @@ function renderFretboard() {
   // Blue bottom strip
   const strip = document.createElementNS(SVG_NS, 'rect');
   strip.setAttribute('x', B.x - 5);
-  strip.setAttribute('y', B.y + B.topMargin + B.h + 8);
+  strip.setAttribute('y', B.y + B.topMargin + B.h + 4);
   strip.setAttribute('width', B.w + 10);
   strip.setAttribute('height', 24);
   strip.setAttribute('fill', state.darkMode ? '#1a2a3a' : '#d6eaf8');
