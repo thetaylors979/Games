@@ -269,7 +269,7 @@ select{
 <main id="mainContent">
   <!-- Fretboard -->
   <div class="fretboard-wrap" id="fretboardWrap">
-    <svg class="fretboard-svg" id="fretboardSvg" viewBox="0 0 1100 360"></svg>
+    <svg class="fretboard-svg" id="fretboardSvg" viewBox="0 0 805 360"></svg>
   </div>
 
   <!-- Control Panel -->
@@ -293,8 +293,8 @@ select{
 const NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const NATURAL_NOTES = ['C','D','E','F','G','A','B'];
 const STRING_COUNT = 6;
-const FRET_COUNT = 17;
-const ZONES = { red:[1,5], orange:[6,11], yellow:[12,17] };
+const FRET_COUNT = 12;
+const ZONES = { red:[1,4], orange:[5,8], yellow:[9,12] };
 
 // Standard tuning: E2 A2 D3 G3 B3 E4 (open string notes)
 const STANDARD_TUNING = ['E','A','D','G','B','E'];
@@ -451,7 +451,7 @@ function getRandomPosition() {
 
 // ===== SVG RENDERING =====
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const BOARD = { x: 20, y: 0, w: 1060, h: 320, topMargin: 4 };
+const BOARD = { x: 20, y: 0, w: 765, h: 320, topMargin: 4 };
 
 function renderFretboard() {
   const svg = document.getElementById('fretboardSvg');
@@ -511,8 +511,8 @@ function renderFretboard() {
     svg.appendChild(line);
   }
 
-  // Fret markers (dots at 3,5,7,9,12,15)
-  [3,5,7,9,12,15].forEach(f => {
+  // Fret markers (dots at 3,5,7,9,12)
+  [3,5,7,9,12].forEach(f => {
     const x = B.x + (f - 0.5) * fretSpacing;
     const y = B.y + B.topMargin + B.h / 2;
     const dot = document.createElementNS(SVG_NS, 'circle');
