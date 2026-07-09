@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Fretboard Trainer v13</title>
+<title>Fretboard Trainer</title>
 <style>
 /* ===== RESET & BASE ===== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -247,12 +247,13 @@ select{
 <body>
 
 <header>
-  <h1>🎸 <span class="pick">Fretboard</span> Trainer <span style="font-size:0.6rem;opacity:0.6;font-weight:400">v13</span></h1>
+  <h1>🎸 <span class="pick">Fretboard</span> Trainer</h1>
   <div class="header-actions">
     <a href="http://100.124.6.90:8080/" class="icon-btn" title="Return to Launcher" style="text-decoration:none">🏠</a>
     <button class="icon-btn" id="btnStats" title="Progress">📊</button>
     <button class="icon-btn" id="btnSettings" title="Settings">⚙️</button>
     <button class="icon-btn" id="btnDarkMode" title="Dark Mode">🌙</button>
+    <button class="icon-btn" id="btnShowNotes" title="Show/Hide Notes">👁️</button>
   </div>
 </header>
 
@@ -329,6 +330,7 @@ let state = {
   audioEnabled: true,
   showSettings: false,
   showStats: false,
+  showNoteLabels: true,
   // Per-note tracking
   noteStats: {},        // { 'C': { correct, total }, ... }
 };
@@ -579,6 +581,22 @@ function renderFretboard() {
       });
 
       svg.appendChild(circle);
+
+      // Note label (show/hide)
+      if (state.showNoteLabels) {
+        const note = getNoteAt(s, f);
+        const text = document.createElementNS(SVG_NS, 'text');
+        text.setAttribute('x', x);
+        text.setAttribute('y', y + 4);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('fill', state.darkMode ? '#a09080' : '#6b5e4a');
+        text.setAttribute('font-size', '9');
+        text.setAttribute('font-weight', '700');
+        text.setAttribute('font-family', 'system-ui,sans-serif');
+        text.setAttribute('pointer-events', 'none');
+        text.textContent = note;
+        svg.appendChild(text);
+      }
     }
   }
 
@@ -1182,6 +1200,14 @@ function toggleAudio() {
   saveState();
 }
 
+function toggleNoteLabels() {
+  state.showNoteLabels = !state.showNoteLabels;
+  const btn = document.getElementById('btnShowNotes');
+  btn.textContent = state.showNoteLabels ? '👁️' : '👁️‍🗨️';
+  renderFretboard();
+  saveState();
+}
+
 function changeTuning(tuning) {
   state.tuning = tuning;
   applyTuning();
@@ -1230,6 +1256,7 @@ function init() {
 
   // Header buttons
   document.getElementById('btnDarkMode').addEventListener('click', toggleDarkMode);
+  document.getElementById('btnShowNotes').addEventListener('click', toggleNoteLabels);
   document.getElementById('btnSettings').addEventListener('click', () => {
     state.showSettings = !state.showSettings;
     state.showStats = false;
