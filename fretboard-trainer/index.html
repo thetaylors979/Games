@@ -89,6 +89,7 @@ main{
 .fretboard-svg circle.note-circle:hover{filter:brightness(0.9)}
 .fretboard-svg circle.note-circle.filled-correct{fill:var(--green);stroke:var(--green)}
 .fretboard-svg circle.note-circle.filled-wrong{fill:var(--red);stroke:var(--red)}
+.fretboard-svg circle.note-circle.filled-selected{fill:var(--accent);stroke:var(--accent);opacity:0.5}
 .fretboard-svg circle.note-circle.filled-missed{fill:var(--blue-strip);stroke:var(--blue-strip);opacity:0.6}
 .fretboard-svg circle.note-circle.filled-user{fill:var(--accent);stroke:var(--accent)}
 .fretboard-svg circle.note-circle.highlight-target{fill:var(--blue-strip);stroke:var(--blue-strip);animation:pulse 1s infinite}
@@ -559,8 +560,14 @@ function renderFretboard() {
       if (state.userMarks[key]) {
         if (state.correctMarks[key]) {
           circle.classList.add('filled-correct');
+        } else if (state.missedMarks[key]) {
+          // This shouldn't happen (userMarks + missedMarks), but just in case
+          circle.classList.add('filled-wrong');
         } else if (state.mode === 'freedraw') {
           circle.classList.add('filled-user');
+        } else if (state.mode === 'flashcard' || state.mode === 'zone') {
+          // In flashcard/zone mode, show selected state before check
+          circle.classList.add('filled-selected');
         } else {
           circle.classList.add('filled-wrong');
         }
@@ -686,12 +693,8 @@ function handleFlashcardClick(key, note) {
   if (state.userMarks[key]) {
     // Un-toggle
     delete state.userMarks[key];
-    delete state.correctMarks[key];
   } else {
     state.userMarks[key] = true;
-    if (note === state.currentNote) {
-      state.correctMarks[key] = true;
-    }
   }
   renderFretboard();
 }
