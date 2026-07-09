@@ -269,7 +269,7 @@ select{
 <main id="mainContent">
   <!-- Fretboard -->
   <div class="fretboard-wrap" id="fretboardWrap">
-    <svg class="fretboard-svg" id="fretboardSvg" viewBox="0 0 805 370"></svg>
+    <svg class="fretboard-svg" id="fretboardSvg" viewBox="0 0 805 390"></svg>
   </div>
 
   <!-- Control Panel -->
@@ -639,7 +639,7 @@ function renderFretboard() {
     const x = B.x + (f - 0.5) * fretSpacing;
     const text = document.createElementNS(SVG_NS, 'text');
     text.setAttribute('x', x);
-    text.setAttribute('y', 358);
+    text.setAttribute('y', 385);
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('fill', state.darkMode ? '#a09080' : '#6b5e4a');
     text.setAttribute('font-size', '15');
