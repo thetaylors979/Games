@@ -268,7 +268,7 @@ select{
 <main id="mainContent">
   <!-- Fretboard -->
   <div class="fretboard-wrap" id="fretboardWrap">
-    <svg class="fretboard-svg" id="fretboardSvg" viewBox="0 0 800 320"></svg>
+    <svg class="fretboard-svg" id="fretboardSvg" viewBox="0 0 800 360"></svg>
   </div>
 
   <!-- Control Panel -->
@@ -450,7 +450,7 @@ function getRandomPosition() {
 
 // ===== SVG RENDERING =====
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const BOARD = { x: 50, y: 20, w: 700, h: 240, topMargin: 16 };
+const BOARD = { x: 50, y: 20, w: 700, h: 270, topMargin: 16 };
 
 function renderFretboard() {
   const svg = document.getElementById('fretboardSvg');
@@ -546,7 +546,7 @@ function renderFretboard() {
       const circle = document.createElementNS(SVG_NS, 'circle');
       circle.setAttribute('cx', x);
       circle.setAttribute('cy', y);
-      circle.setAttribute('r', 10);
+      circle.setAttribute('r', 12);
       circle.setAttribute('fill', state.darkMode ? '#1a1a3e' : '#fff');
       circle.setAttribute('stroke', state.darkMode ? '#3a3a5a' : '#c4b896');
       circle.setAttribute('stroke-width', '1.5');
