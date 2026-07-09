@@ -89,6 +89,7 @@ main{
 .fretboard-svg circle.note-circle:hover{filter:brightness(0.9)}
 .fretboard-svg circle.note-circle.filled-correct{fill:var(--green);stroke:var(--green)}
 .fretboard-svg circle.note-circle.filled-wrong{fill:var(--red);stroke:var(--red)}
+.fretboard-svg circle.note-circle.filled-missed{fill:var(--blue-strip);stroke:var(--blue-strip);opacity:0.6}
 .fretboard-svg circle.note-circle.filled-user{fill:var(--accent);stroke:var(--accent)}
 .fretboard-svg circle.note-circle.highlight-target{fill:var(--blue-strip);stroke:var(--blue-strip);animation:pulse 1s infinite}
 .fretboard-svg circle.note-circle.show-answer{fill:var(--green);stroke:var(--green);opacity:0.7}
@@ -314,6 +315,7 @@ let state = {
   currentNote: null,
   userMarks: {},        // { 'string-fret': true }
   correctMarks: {},     // { 'string-fret': true }
+  missedMarks: {},      // { 'string-fret': true } — correct positions user didn't tap
   score: 0,
   streak: 0,
   bestStreak: 0,
@@ -566,6 +568,9 @@ function renderFretboard() {
       if (state.correctMarks[key] && state.showAnswers) {
         circle.classList.add('show-answer');
       }
+      if (state.missedMarks[key]) {
+        circle.classList.add('filled-missed');
+      }
       if (state.correctMarks[key] && state.mode !== 'flashcard' && state.mode !== 'freedraw') {
         // Show correct answers in reverse mode after answering
       }
@@ -695,6 +700,7 @@ function newFlashcard() {
   state.currentNote = getRandomNote();
   state.userMarks = {};
   state.correctMarks = {};
+  state.missedMarks = {};
   state.showAnswers = false;
   renderFretboard();
   renderControlPanel();
@@ -722,6 +728,7 @@ function checkFlashcard() {
   for (const key of correctKeys) {
     if (!userKeys.has(key)) {
       missed++;
+      state.missedMarks[key] = true;
     }
   }
 
