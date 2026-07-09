@@ -589,11 +589,14 @@ function renderFretboard() {
         const note = getNoteAt(s, f);
         const text = document.createElementNS(SVG_NS, 'text');
         text.setAttribute('x', x);
-        text.setAttribute('y', y + 4);
+        text.setAttribute('y', y + 5);
         text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('fill', state.darkMode ? '#fff' : '#2c2416');
-        text.setAttribute('font-size', '9');
-        text.setAttribute('font-weight', '700');
+        text.setAttribute('fill', '#fff');
+        text.setAttribute('stroke', '#000');
+        text.setAttribute('stroke-width', '2');
+        text.setAttribute('paint-order', 'stroke fill');
+        text.setAttribute('font-size', '11');
+        text.setAttribute('font-weight', '800');
         text.setAttribute('font-family', 'system-ui,sans-serif');
         text.setAttribute('pointer-events', 'none');
         text.textContent = note;
