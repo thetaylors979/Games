@@ -329,6 +329,7 @@ let state = {
   audioEnabled: true,
   showSettings: false,
   showStats: false,
+  showAnswers: false,
   // Per-note tracking
   noteStats: {},        // { 'C': { correct, total }, ... }
 };
@@ -672,6 +673,7 @@ function newFlashcard() {
   state.currentNote = getRandomNote();
   state.userMarks = {};
   state.correctMarks = {};
+  state.showAnswers = false;
   renderFretboard();
   renderControlPanel();
 }
@@ -976,6 +978,7 @@ function renderFlashcardPanel() {
     Tap all positions where <strong>${state.currentNote}</strong> appears on the fretboard
   </p>
   <div style="text-align:center;margin-top:4px">
+    <button class="btn btn-secondary btn-sm" onclick="toggleShowAnswers()">${state.showAnswers ? '🙈 Hide' : '👁️ Show'} Answers</button>
     <button class="btn btn-secondary btn-sm" onclick="showChart()">📊 Chart</button>
   </div>`;
 }
@@ -1105,6 +1108,20 @@ function showChart() {
 }
 function hideChart() {
   document.getElementById('chartOverlay').style.display = 'none';
+}
+
+function toggleShowAnswers() {
+  if (!state.currentNote) return;
+  state.showAnswers = !state.showAnswers;
+  if (state.showAnswers) {
+    const positions = findAllPositions(state.currentNote);
+    state.correctMarks = {};
+    positions.forEach(p => { state.correctMarks[`${p.string}-${p.fret}`] = true; });
+  } else {
+    state.correctMarks = {};
+  }
+  renderFretboard();
+  renderControlPanel();
 }
 
 // ===== TOAST =====
