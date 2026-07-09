@@ -583,6 +583,22 @@ function renderFretboard() {
       });
 
       svg.appendChild(circle);
+
+      // Show note label in free draw mode for marked circles
+      if (state.mode === 'freedraw' && state.userMarks[key]) {
+        const note = getNoteAt(s, f);
+        const text = document.createElementNS(SVG_NS, 'text');
+        text.setAttribute('x', x);
+        text.setAttribute('y', y + 4);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('fill', state.darkMode ? '#fff' : '#2c2416');
+        text.setAttribute('font-size', '9');
+        text.setAttribute('font-weight', '700');
+        text.setAttribute('font-family', 'system-ui,sans-serif');
+        text.setAttribute('pointer-events', 'none');
+        text.textContent = note;
+        svg.appendChild(text);
+      }
     }
   }
 
@@ -792,18 +808,14 @@ function handleFreeDrawClick(key) {
 }
 
 function checkFreeDraw() {
-  let correct = 0, wrong = 0;
-  state.correctMarks = {};
-
-  for (const key of Object.keys(state.userMarks)) {
-    const [s, f] = key.split('-').map(Number);
-    const actualNote = getNoteAt(s, f);
-    // We don't know what note the user intended, so we just mark all as "user filled"
-    state.correctMarks[key] = true;
+  // Show all note names on the entire fretboard
+  for (let s = 0; s < STRING_COUNT; s++) {
+    for (let f = 1; f <= FRET_COUNT; f++) {
+      state.userMarks[`${s}-${f}`] = true;
+    }
   }
-
   renderFretboard();
-  showToast('Notes displayed — verify against a reference!');
+  showToast('All notes shown — tap to hide individual notes');
 }
 
 function clearFreeDraw() {
