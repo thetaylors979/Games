@@ -735,10 +735,8 @@ function checkFlashcard() {
     }
   }
 
-  state.totalAttempts++;
-  // Track per-position accuracy: correct positions found vs total correct positions
+  state.totalAttempts += userKeys.size;
   state.correctAttempts += correct;
-  state.totalAttempts += wrong; // count wrong taps as additional attempts
   if (wrong === 0 && missed === 0) {
     state.streak++;
     if (state.streak > state.bestStreak) state.bestStreak = state.streak;
