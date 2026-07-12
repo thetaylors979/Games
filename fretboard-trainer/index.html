@@ -251,7 +251,7 @@ select{
 <header>
   <h1>🎸 <span class="pick">Fretboard</span> Trainer</h1>
   <div class="header-actions">
-    <a href="../" class="icon-btn" title="Return to Launcher" style="text-decoration:none">🏠</a>
+    <a href="http://100.124.6.90:8080/" class="icon-btn" title="Return to Launcher" style="text-decoration:none">🏠</a>
     <button class="icon-btn" id="btnStats" title="Progress">📊</button>
     <button class="icon-btn" id="btnSettings" title="Settings">⚙️</button>
     <button class="icon-btn" id="btnDarkMode" title="Dark Mode">🌙</button>
@@ -264,6 +264,7 @@ select{
   <button class="mode-tab" data-mode="freedraw">✏️ Free Draw</button>
   <button class="mode-tab" data-mode="speed">⏱️ Speed Round</button>
   <button class="mode-tab" data-mode="zone">🗺️ Zone Training</button>
+  <button class="mode-tab" data-mode="simplified">🎯 Simplified</button>
 </nav>
 
 <main id="mainContent">
@@ -295,6 +296,8 @@ const NATURAL_NOTES = ['C','D','E','F','G','A','B'];
 const STRING_COUNT = 6;
 const FRET_COUNT = 12;
 const ZONES = { red:[1,4], orange:[5,8], yellow:[9,12] };
+// Simplified fretboard: only dot-inlay frets (1,3,5,7,9,12)
+const SIMPLIFIED_FRETS = [1, 3, 5, 7, 9, 12];
 
 // Standard tuning: E2 A2 D3 G3 B3 E4 (open string notes)
 const STANDARD_TUNING = ['E','A','D','G','B','E'];
@@ -438,6 +441,18 @@ function findAllPositions(noteName) {
   return positions;
 }
 
+function findAllPositionsSimplified(noteName) {
+  const positions = [];
+  for (let s = 0; s < STRING_COUNT; s++) {
+    for (const f of SIMPLIFIED_FRETS) {
+      if (getNoteAt(s, f) === noteName) {
+        positions.push({ string: s, fret: f });
+      }
+    }
+  }
+  return positions;
+}
+
 function getRandomNote(includeSharps=true) {
   const pool = includeSharps ? NOTES : NATURAL_NOTES;
   return pool[Math.floor(Math.random() * pool.length)];
@@ -499,8 +514,11 @@ function renderFretboard() {
   }
 
   // Frets
+  const isSimplifiedMode = state.mode === 'simplified';
   for (let f = 0; f <= FRET_COUNT; f++) {
     const x = B.x + f * fretSpacing;
+    const isDotFret = f === 0 || SIMPLIFIED_FRETS.includes(f);
+    const fretOpacity = (isSimplifiedMode && !isDotFret) ? '0.3' : '1';
     const line = document.createElementNS(SVG_NS, 'line');
     line.setAttribute('x1', x);
     line.setAttribute('y1', B.y + B.topMargin);
@@ -508,6 +526,7 @@ function renderFretboard() {
     line.setAttribute('y2', B.y + B.topMargin + B.h);
     line.setAttribute('stroke', state.darkMode ? '#4a4a6a' : '#b8a890');
     line.setAttribute('stroke-width', f === 0 ? 3 : 1);
+    line.setAttribute('opacity', fretOpacity);
     svg.appendChild(line);
   }
 
@@ -541,6 +560,8 @@ function renderFretboard() {
   // Note circles
   for (let s = 0; s < STRING_COUNT; s++) {
     for (let f = 1; f <= FRET_COUNT; f++) {
+      // In simplified mode, only show circles at dot-inlay frets
+      if (isSimplifiedMode && !SIMPLIFIED_FRETS.includes(f)) continue;
       const x = B.x + (f - 0.5) * fretSpacing;
       const y = B.y + B.topMargin + s * stringSpacing;
       const key = `${s}-${f}`;
@@ -637,6 +658,8 @@ function renderFretboard() {
   // Fret numbers
   for (let f = 1; f <= FRET_COUNT; f++) {
     const x = B.x + (f - 0.5) * fretSpacing;
+    const isDotFret = SIMPLIFIED_FRETS.includes(f);
+    const numOpacity = (isSimplifiedMode && !isDotFret) ? '0.3' : '1';
     const text = document.createElementNS(SVG_NS, 'text');
     text.setAttribute('x', x);
     text.setAttribute('y', 395);
@@ -645,6 +668,7 @@ function renderFretboard() {
     text.setAttribute('font-size', '15');
     text.setAttribute('font-weight', '600');
     text.setAttribute('font-family', 'system-ui,sans-serif');
+    text.setAttribute('opacity', numOpacity);
     text.textContent = f;
     svg.appendChild(text);
   }
@@ -683,6 +707,9 @@ function onCircleClick(stringIdx, fret, key) {
       break;
     case 'zone':
       handleFlashcardClick(key, note);
+      break;
+    case 'simplified':
+      handleSimplifiedClick(key, note);
       break;
   }
 }
@@ -923,6 +950,69 @@ function setZoneFilter(zone) {
   renderControlPanel();
 }
 
+// ===== SIMPLIFIED MODE =====
+function handleSimplifiedClick(key, note) {
+  if (!state.currentNote) return;
+  if (state.userMarks[key]) {
+    delete state.userMarks[key];
+  } else {
+    state.userMarks[key] = true;
+  }
+  renderFretboard();
+}
+
+function newSimplifiedCard() {
+  state.currentNote = getRandomNote();
+  state.userMarks = {};
+  state.correctMarks = {};
+  state.missedMarks = {};
+  state.showAnswers = false;
+  renderFretboard();
+  renderControlPanel();
+}
+
+function checkSimplified() {
+  if (!state.currentNote) return;
+  const correctPositions = findAllPositionsSimplified(state.currentNote);
+  const correctKeys = new Set(correctPositions.map(p => `${p.string}-${p.fret}`));
+  const userKeys = new Set(Object.keys(state.userMarks));
+
+  let correct = 0, wrong = 0, missed = 0;
+
+  for (const key of userKeys) {
+    if (correctKeys.has(key)) {
+      correct++;
+      state.correctMarks[key] = true;
+    } else {
+      wrong++;
+    }
+  }
+
+  for (const key of correctKeys) {
+    if (!userKeys.has(key)) {
+      missed++;
+      state.missedMarks[key] = true;
+    }
+  }
+
+  state.totalAttempts += userKeys.size;
+  state.correctAttempts += correct;
+  if (wrong === 0 && missed === 0) {
+    state.streak++;
+    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+    trackNoteStat(state.currentNote, true);
+    showToast('✅ Perfect! All positions found!');
+  } else {
+    state.streak = 0;
+    trackNoteStat(state.currentNote, false);
+    showToast(`${correct} correct, ${wrong} wrong, ${missed} missed`);
+  }
+
+  renderFretboard();
+  renderControlPanel();
+  saveState();
+}
+
 // ===== STATS =====
 function trackNoteStat(note, correct) {
   if (!state.noteStats[note]) {
@@ -961,6 +1051,9 @@ function renderControlPanel() {
     case 'zone':
       html += renderFlashcardPanel();
       break;
+    case 'simplified':
+      html += renderSimplifiedPanel();
+      break;
     case 'reverse':
       html += renderReversePanel();
       break;
@@ -972,7 +1065,7 @@ function renderControlPanel() {
       break;
   }
 
-  // Zone filter for flashcard/zone modes
+  // Zone filter for flashcard/zone modes (not simplified)
   if (state.mode === 'flashcard' || state.mode === 'zone') {
     html += `<div class="zone-selector">
       <button class="zone-btn all ${state.zoneFilter==='all'?'active':''}" onclick="setZoneFilter('all')">All Frets</button>
@@ -1005,6 +1098,32 @@ function renderFlashcardPanel() {
   </div>
   <p style="text-align:center;color:var(--text-secondary);font-size:0.85rem">
     Tap all positions where <strong>${state.currentNote}</strong> appears on the fretboard
+  </p>`;
+}
+
+function renderSimplifiedPanel() {
+  if (!state.currentNote) {
+    return `<div style="text-align:center">
+      <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:8px">
+        Only dot-inlay frets (1, 3, 5, 7, 9, 12) — the most commonly played positions
+      </p>
+      <button class="btn btn-primary" onclick="newSimplifiedCard()">🎯 Draw a Card</button>
+      <button class="btn btn-secondary" onclick="showChart()" style="margin-top:8px">📊 Chart</button>
+    </div>`;
+  }
+  return `<div class="flashcard-display">
+    <div class="flashcard" onclick="playNote('${state.currentNote}',3)">${state.currentNote}</div>
+    <div class="flashcard-controls">
+      <button class="btn btn-primary" onclick="checkSimplified()">✓ Check</button>
+      <button class="btn btn-secondary" onclick="newSimplifiedCard()">🔄 Next Card</button>
+    </div>
+    <div class="flashcard-controls" style="margin-top:6px">
+      <button class="btn btn-secondary btn-sm" onclick="toggleShowAnswersSimplified()">${state.showAnswers ? '🙈 Hide' : '👁️ Show'} Answers</button>
+      <button class="btn btn-secondary btn-sm" onclick="showChart()">📊 Chart</button>
+    </div>
+  </div>
+  <p style="text-align:center;color:var(--text-secondary);font-size:0.85rem">
+    Tap all <strong>dot-inlay</strong> positions where <strong>${state.currentNote}</strong> appears
   </p>`;
 }
 
@@ -1149,6 +1268,20 @@ function toggleShowAnswers() {
   renderControlPanel();
 }
 
+function toggleShowAnswersSimplified() {
+  if (!state.currentNote) return;
+  state.showAnswers = !state.showAnswers;
+  if (state.showAnswers) {
+    const positions = findAllPositionsSimplified(state.currentNote);
+    state.correctMarks = {};
+    positions.forEach(p => { state.correctMarks[`${p.string}-${p.fret}`] = true; });
+  } else {
+    state.correctMarks = {};
+  }
+  renderFretboard();
+  renderControlPanel();
+}
+
 // ===== TOAST =====
 let toastTimeout;
 function showToast(msg) {
@@ -1192,6 +1325,9 @@ function switchMode(mode) {
     case 'zone':
       newFlashcard();
       break;
+    case 'simplified':
+      newSimplifiedCard();
+      break;
   }
 
   renderFretboard();
@@ -1232,6 +1368,7 @@ function changeTuning(tuning) {
   state.currentNote = null;
   renderFretboard();
   if (state.mode === 'flashcard' || state.mode === 'zone') newFlashcard();
+  if (state.mode === 'simplified') newSimplifiedCard();
   if (state.mode === 'reverse') newReverseQuestion();
   renderControlPanel();
   saveState();
