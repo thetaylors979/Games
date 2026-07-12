@@ -304,6 +304,7 @@
                 <select id="sfTypeDropdown" onchange="addServiceType(this.value); this.value='';">
                     <option value="">+ Add service type...</option>
                     <option value="Oil Change">Oil Change</option>
+                    <option value="Lube">Lube</option>
                     <option value="Tire Rotation">Tire Rotation</option>
                     <option value="Brake Pads">Brake Pads</option>
                     <option value="Brake Rotors">Brake Rotors</option>
@@ -347,6 +348,7 @@
         <div class="form-group"><label>Service Type</label>
             <select id="rfType">
                 <option value="Oil Change">Oil Change</option>
+                <option value="Lube">Lube</option>
                 <option value="Tire Rotation">Tire Rotation</option>
                 <option value="Brake Pads">Brake Pads</option>
                 <option value="Brake Rotors">Brake Rotors</option>
@@ -372,7 +374,7 @@
 
 <script>
 const SERVICE_TYPES = [
-    'Oil Change','Tire Rotation','Brake Pads','Brake Rotors','Battery',
+    'Oil Change','Lube','Tire Rotation','Brake Pads','Brake Rotors','Battery',
     'Air Filter','Cabin Filter','Spark Plugs','Transmission Fluid',
     'Coolant Flush','Alignment','State Inspection','Other'
 ];
