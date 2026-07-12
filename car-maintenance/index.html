@@ -388,10 +388,22 @@ let editingReminderId = null;
 let editingVehicleId = null;
 let activeTab = 'history';
 
+// Default seed data — synced from Mac mini, deployed to Cloudflare
+const DEFAULT_VEHICLES = [{"id":1782844644294,"name":"Bill's F-150","year":"2024","make":"Ford","model":"F-150 Power","plate":"TZR2199","vin":"1FTFW1ED9PFD03182","odometer":37417,"oil":"","notes":"","engineHours":654},{"id":1782845300455,"name":"Anna's Infiniti QX60","year":"2027","make":"Inifiniti","model":"QX60","plate":"XYT6583","vin":"","odometer":1000,"engineHours":0,"oil":"","notes":""},{"id":1782845382614,"name":"Ella Claire's Infiniti QX60","year":"2017","make":"Infiniti","model":"QX60","plate":"MVS7763","vin":"5N1DL0MM9HC544914","odometer":178000,"engineHours":0,"oil":"","notes":""},{"id":1783827093055,"name":"Tractor","year":"2025","make":"Kubota","model":"","plate":"","vin":"","odometer":0,"engineHours":0,"oil":"","notes":""}];
+const DEFAULT_SERVICES = [{"id":1782844777827,"vehicleId":1782844644294,"type":"Oil Change","date":"2025-01-04","odometer":9185,"cost":114,"shop":"Greatwood kwik kar","notes":"","types":["Oil Change","Air Filter"]},{"id":1782844979984,"vehicleId":1782844644294,"types":["Oil Change"],"date":"2025-07-05","odometer":17380,"cost":94,"shop":"Greatwood kwik kar","notes":""},{"id":1782845083344,"vehicleId":1782844644294,"types":["Oil Change"],"date":"2025-12-06","odometer":30000,"cost":106,"shop":"Greatwood kwik kar","notes":""},{"id":1782845140667,"vehicleId":1782844644294,"types":["Oil Change","Cabin Filter","Air Filter"],"date":"2026-01-17","odometer":37417,"cost":165,"shop":"Greatwood kwik kar","notes":"","engineHours":654}];
+const DEFAULT_REMINDERS = [];
+
 function load() {
     try { vehicles = JSON.parse(localStorage.getItem('cm-vehicles') || '[]'); } catch(e) { vehicles = []; }
     try { services = JSON.parse(localStorage.getItem('cm-services') || '[]'); } catch(e) { services = []; }
     try { reminders = JSON.parse(localStorage.getItem('cm-reminders') || '[]'); } catch(e) { reminders = []; }
+    // Seed with default data if empty (shared across devices via Cloudflare deploy)
+    if (vehicles.length === 0 && services.length === 0) {
+        vehicles = DEFAULT_VEHICLES;
+        services = DEFAULT_SERVICES;
+        reminders = DEFAULT_REMINDERS;
+        saveAll();
+    }
 }
 
 function saveAll() {
