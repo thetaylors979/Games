@@ -260,7 +260,6 @@ select{
 
 <nav id="modeTabs">
   <button class="mode-tab active" data-mode="flashcard">🎯 Flashcard</button>
-  <button class="mode-tab" data-mode="simplified">🎯 Simplified</button>
   <button class="mode-tab" data-mode="picker">📝 Note Picker</button>
   <button class="mode-tab" data-mode="reverse">🔍 Reverse</button>
   <button class="mode-tab" data-mode="freedraw">✏️ Free Draw</button>
@@ -350,6 +349,7 @@ let state = {
   showSettings: false,
   showStats: false,
   showAnswers: false,
+  naturalNotesOnly: false, // toggle: show only natural notes (no sharps/flats)
   // Note Picker mode
   selectedNote: null,   // which note button is active (e.g., 'C')
   placedNotes: {},      // { 'string-fret': 'C' } — note placed at each position
@@ -452,6 +452,8 @@ function findAllPositions(noteName) {
           const [zMin, zMax] = ZONES[state.zoneFilter];
           if (f < zMin || f > zMax) continue;
         }
+        // Apply natural notes filter
+        if (state.naturalNotesOnly && !isSimplifiedFret(s, f)) continue;
         positions.push({ string: s, fret: f });
       }
     }
@@ -459,19 +461,6 @@ function findAllPositions(noteName) {
   return positions;
 }
 
-function findAllPositionsSimplified(noteName) {
-  // Only return positions at frets that have natural notes on that string
-  const positions = [];
-  for (let s = 0; s < STRING_COUNT; s++) {
-    const simplifiedFrets = getSimplifiedFrets(s);
-    for (const f of simplifiedFrets) {
-      if (getNoteAt(s, f) === noteName) {
-        positions.push({ string: s, fret: f });
-      }
-    }
-  }
-  return positions;
-}
 
 function getRandomNote(includeSharps=true) {
   const pool = includeSharps ? NOTES : NATURAL_NOTES;
@@ -534,13 +523,13 @@ function renderFretboard() {
   }
 
   // Frets
-  const isSimplifiedMode = state.mode === 'simplified';
+  const showNaturalOnly = state.naturalNotesOnly && (state.mode === 'flashcard' || state.mode === 'picker' || state.mode === 'zone');
   for (let f = 0; f <= FRET_COUNT; f++) {
     const x = B.x + f * fretSpacing;
-    // In simplified mode, a fret is "active" if ANY string has a natural note there
-    const anyStringHasNatural = isSimplifiedMode ? 
+    // In natural notes mode, a fret is "active" if ANY string has a natural note there
+    const anyStringHasNatural = showNaturalOnly ? 
       Array.from({length: STRING_COUNT}, (_,s) => isSimplifiedFret(s, f)).some(Boolean) : true;
-    const fretOpacity = (isSimplifiedMode && !anyStringHasNatural && f !== 0) ? '0.3' : '1';
+    const fretOpacity = (showNaturalOnly && !anyStringHasNatural && f !== 0) ? '0.3' : '1';
     const line = document.createElementNS(SVG_NS, 'line');
     line.setAttribute('x1', x);
     line.setAttribute('y1', B.y + B.topMargin);
@@ -582,8 +571,8 @@ function renderFretboard() {
   // Note circles
   for (let s = 0; s < STRING_COUNT; s++) {
     for (let f = 1; f <= FRET_COUNT; f++) {
-      // In simplified mode, only show circles at frets with natural notes on this string
-      if (isSimplifiedMode && !isSimplifiedFret(s, f)) continue;
+      // In natural notes mode, only show circles at frets with natural notes on this string
+      if (showNaturalOnly && !isSimplifiedFret(s, f)) continue;
       const x = B.x + (f - 0.5) * fretSpacing;
       const y = B.y + B.topMargin + s * stringSpacing;
       const key = `${s}-${f}`;
@@ -693,9 +682,9 @@ function renderFretboard() {
   // Fret numbers
   for (let f = 1; f <= FRET_COUNT; f++) {
     const x = B.x + (f - 0.5) * fretSpacing;
-    const anyStringHasNatural = isSimplifiedMode ?
+    const anyStringHasNatural = showNaturalOnly ?
       Array.from({length: STRING_COUNT}, (_,s) => isSimplifiedFret(s, f)).some(Boolean) : true;
-    const numOpacity = (isSimplifiedMode && !anyStringHasNatural) ? '0.3' : '1';
+    const numOpacity = (showNaturalOnly && !anyStringHasNatural) ? '0.3' : '1';
     const text = document.createElementNS(SVG_NS, 'text');
     text.setAttribute('x', x);
     text.setAttribute('y', 395);
@@ -743,9 +732,6 @@ function onCircleClick(stringIdx, fret, key) {
       break;
     case 'zone':
       handleFlashcardClick(key, note);
-      break;
-    case 'simplified':
-      handleSimplifiedClick(key, note);
       break;
     case 'picker':
       handlePickerClick(stringIdx, fret, key, note);
@@ -989,68 +975,8 @@ function setZoneFilter(zone) {
   renderControlPanel();
 }
 
-// ===== SIMPLIFIED MODE =====
-function handleSimplifiedClick(key, note) {
-  if (!state.currentNote) return;
-  if (state.userMarks[key]) {
-    delete state.userMarks[key];
-  } else {
-    state.userMarks[key] = true;
-  }
-  renderFretboard();
-}
 
-function newSimplifiedCard() {
-  state.currentNote = getRandomNote();
-  state.userMarks = {};
-  state.correctMarks = {};
-  state.missedMarks = {};
-  state.showAnswers = false;
-  renderFretboard();
-  renderControlPanel();
-}
 
-function checkSimplified() {
-  if (!state.currentNote) return;
-  const correctPositions = findAllPositionsSimplified(state.currentNote);
-  const correctKeys = new Set(correctPositions.map(p => `${p.string}-${p.fret}`));
-  const userKeys = new Set(Object.keys(state.userMarks));
-
-  let correct = 0, wrong = 0, missed = 0;
-
-  for (const key of userKeys) {
-    if (correctKeys.has(key)) {
-      correct++;
-      state.correctMarks[key] = true;
-    } else {
-      wrong++;
-    }
-  }
-
-  for (const key of correctKeys) {
-    if (!userKeys.has(key)) {
-      missed++;
-      state.missedMarks[key] = true;
-    }
-  }
-
-  state.totalAttempts += userKeys.size;
-  state.correctAttempts += correct;
-  if (wrong === 0 && missed === 0) {
-    state.streak++;
-    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
-    trackNoteStat(state.currentNote, true);
-    showToast('✅ Perfect! All positions found!');
-  } else {
-    state.streak = 0;
-    trackNoteStat(state.currentNote, false);
-    showToast(`${correct} correct, ${wrong} wrong, ${missed} missed`);
-  }
-
-  renderFretboard();
-  renderControlPanel();
-  saveState();
-}
 
 // ===== NOTE PICKER MODE =====
 function handlePickerClick(stringIdx, fret, key, note) {
@@ -1169,9 +1095,6 @@ function renderControlPanel() {
     case 'zone':
       html += renderFlashcardPanel();
       break;
-    case 'simplified':
-      html += renderSimplifiedPanel();
-      break;
     case 'reverse':
       html += renderReversePanel();
       break;
@@ -1186,7 +1109,7 @@ function renderControlPanel() {
       break;
   }
 
-  // Zone filter for flashcard/zone modes (not simplified)
+  // Zone filter for flashcard/zone modes
   if (state.mode === 'flashcard' || state.mode === 'zone') {
     html += `<div class="zone-selector">
       <button class="zone-btn all ${state.zoneFilter==='all'?'active':''}" onclick="setZoneFilter('all')">All Frets</button>
@@ -1199,9 +1122,35 @@ function renderControlPanel() {
   panel.innerHTML = html;
 }
 
+function toggleNaturalNotes() {
+  state.naturalNotesOnly = !state.naturalNotesOnly;
+  if (state.mode === 'flashcard' || state.mode === 'zone') newFlashcard();
+  if (state.mode === 'picker') {
+    state.placedNotes = {};
+    state.correctMarks = {};
+    state.missedMarks = {};
+    state.pickerChecked = false;
+  }
+  renderFretboard();
+  renderControlPanel();
+  saveState();
+}
+
+function renderNaturalNotesToggle() {
+  const active = state.naturalNotesOnly;
+  return `<div style="text-align:center;margin-bottom:8px">
+    <button class="btn btn-sm ${active ? 'btn-primary' : 'btn-secondary'}" 
+      onclick="toggleNaturalNotes()" style="font-size:0.8rem">
+      ${active ? '🌿 Natural Notes' : '🎸 Full Fretboard'}
+    </button>
+  </div>`;
+}
+
 function renderFlashcardPanel() {
+  const nnToggle = renderNaturalNotesToggle();
   if (!state.currentNote) {
     return `<div style="text-align:center">
+      ${nnToggle}
       <button class="btn btn-primary" onclick="newFlashcard()">🎯 Draw a Card</button>
       <button class="btn btn-secondary" onclick="showChart()" style="margin-top:8px">📊 Chart</button>
     </div>`;
@@ -1217,36 +1166,12 @@ function renderFlashcardPanel() {
       <button class="btn btn-secondary btn-sm" onclick="showChart()">📊 Chart</button>
     </div>
   </div>
+  ${nnToggle}
   <p style="text-align:center;color:var(--text-secondary);font-size:0.85rem">
     Tap all positions where <strong>${state.currentNote}</strong> appears on the fretboard
   </p>`;
 }
 
-function renderSimplifiedPanel() {
-  if (!state.currentNote) {
-    return `<div style="text-align:center">
-      <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:8px">
-        Natural notes only — no sharps/flats. Each string shows only where A-G appear.
-      </p>
-      <button class="btn btn-primary" onclick="newSimplifiedCard()">🎯 Draw a Card</button>
-      <button class="btn btn-secondary" onclick="showChart()" style="margin-top:8px">📊 Chart</button>
-    </div>`;
-  }
-  return `<div class="flashcard-display">
-    <div class="flashcard" onclick="playNote('${state.currentNote}',3)">${state.currentNote}</div>
-    <div class="flashcard-controls">
-      <button class="btn btn-primary" onclick="checkSimplified()">✓ Check</button>
-      <button class="btn btn-secondary" onclick="newSimplifiedCard()">🔄 Next Card</button>
-    </div>
-    <div class="flashcard-controls" style="margin-top:6px">
-      <button class="btn btn-secondary btn-sm" onclick="toggleShowAnswersSimplified()">${state.showAnswers ? '🙈 Hide' : '👁️ Show'} Answers</button>
-      <button class="btn btn-secondary btn-sm" onclick="showChart()">📊 Chart</button>
-    </div>
-  </div>
-  <p style="text-align:center;color:var(--text-secondary);font-size:0.85rem">
-    Tap all <strong>natural note</strong> positions where <strong>${state.currentNote}</strong> appears
-  </p>`;
-}
 
 function renderReversePanel() {
   const correctNote = state.reverseTarget ? getNoteAt(state.reverseTarget.string, state.reverseTarget.fret) : null;
@@ -1336,6 +1261,7 @@ function renderPickerPanel() {
   }
 
   return `<div style="text-align:center">
+    ${renderNaturalNotesToggle()}
     <p style="margin-bottom:6px;color:var(--text-secondary);font-size:0.85rem">
       ${state.pickerChecked ? 'Results:' : state.selectedNote ? `Placing: <strong>${state.selectedNote}</strong>` : 'Select a note, then tap the fretboard'}
     </p>
@@ -1427,19 +1353,6 @@ function toggleShowAnswers() {
   renderControlPanel();
 }
 
-function toggleShowAnswersSimplified() {
-  if (!state.currentNote) return;
-  state.showAnswers = !state.showAnswers;
-  if (state.showAnswers) {
-    const positions = findAllPositionsSimplified(state.currentNote);
-    state.correctMarks = {};
-    positions.forEach(p => { state.correctMarks[`${p.string}-${p.fret}`] = true; });
-  } else {
-    state.correctMarks = {};
-  }
-  renderFretboard();
-  renderControlPanel();
-}
 
 // ===== TOAST =====
 let toastTimeout;
@@ -1483,9 +1396,6 @@ function switchMode(mode) {
       break;
     case 'zone':
       newFlashcard();
-      break;
-    case 'simplified':
-      newSimplifiedCard();
       break;
     case 'picker':
       state.placedNotes = {};
@@ -1534,7 +1444,6 @@ function changeTuning(tuning) {
   state.currentNote = null;
   renderFretboard();
   if (state.mode === 'flashcard' || state.mode === 'zone') newFlashcard();
-  if (state.mode === 'simplified') newSimplifiedCard();
   if (state.mode === 'reverse') newReverseQuestion();
   if (state.mode === 'picker') {
     state.placedNotes = {};
