@@ -92,6 +92,7 @@ main{
 .fretboard-svg circle.note-circle.filled-selected{fill:var(--accent);stroke:var(--accent);opacity:0.5}
 .fretboard-svg circle.note-circle.filled-missed{fill:var(--blue-strip);stroke:var(--blue-strip);opacity:0.6}
 .fretboard-svg circle.note-circle.filled-user{fill:var(--accent);stroke:var(--accent)}
+.fretboard-svg circle.note-circle.selected-fret{fill:var(--accent);stroke:#fff;stroke-width:3;animation:pulse 1s infinite}
 .fretboard-svg circle.note-circle.highlight-target{fill:var(--blue-strip);stroke:var(--blue-strip);animation:pulse 1s infinite}
 .fretboard-svg circle.note-circle.show-answer{fill:var(--green);stroke:var(--green);opacity:0.7}
 .fretboard-svg circle.note-circle.reverse-correct{fill:var(--green);stroke:var(--green)}
@@ -352,6 +353,7 @@ let state = {
   naturalNotesOnly: false, // toggle: show only natural notes (no sharps/flats)
   // Note Picker mode
   selectedNote: null,   // which note button is active (e.g., 'C')
+  selectedFret: null,   // which fret position is selected (e.g., '2-3')
   placedNotes: {},      // { 'string-fret': 'C' } — note placed at each position
   pickerChecked: false, // whether Check has been pressed
   // Per-note tracking
@@ -632,6 +634,11 @@ function renderFretboard() {
         } else {
           circle.classList.add('filled-user');
         }
+      }
+
+      // Highlight selected fret in picker mode
+      if (state.mode === 'picker' && state.selectedFret === key && !state.pickerChecked) {
+        circle.classList.add('selected-fret');
       }
 
       circle.addEventListener('click', () => onCircleClick(s, f, key));
@@ -982,15 +989,26 @@ function setZoneFilter(zone) {
 // ===== NOTE PICKER MODE =====
 function handlePickerClick(stringIdx, fret, key, note) {
   if (state.pickerChecked) return;
-  if (!state.selectedNote) {
-    showToast('Select a note first 👆');
+  
+  // If a note is already selected (old flow: note-first), place it
+  if (state.selectedNote) {
+    if (state.placedNotes[key] === state.selectedNote) {
+      delete state.placedNotes[key];
+    } else {
+      state.placedNotes[key] = state.selectedNote;
+    }
+    state.selectedFret = null;
+    renderFretboard();
+    renderControlPanel();
     return;
   }
-  // Toggle: if already placed with same note, remove it; otherwise place/overwrite
-  if (state.placedNotes[key] === state.selectedNote) {
-    delete state.placedNotes[key];
+  
+  // New flow: select fret first, then pick note from bottom
+  // Toggle fret selection
+  if (state.selectedFret === key) {
+    state.selectedFret = null;
   } else {
-    state.placedNotes[key] = state.selectedNote;
+    state.selectedFret = key;
   }
   renderFretboard();
   renderControlPanel();
@@ -998,6 +1016,22 @@ function handlePickerClick(stringIdx, fret, key, note) {
 
 function selectPickerNote(noteName) {
   if (state.pickerChecked) return;
+  
+  // New flow: if a fret is selected, place the note there
+  if (state.selectedFret) {
+    if (state.placedNotes[state.selectedFret] === noteName) {
+      delete state.placedNotes[state.selectedFret];
+    } else {
+      state.placedNotes[state.selectedFret] = noteName;
+    }
+    state.selectedFret = null;
+    state.selectedNote = null;
+    renderFretboard();
+    renderControlPanel();
+    return;
+  }
+  
+  // Old flow: no fret selected, toggle note selection for note-first mode
   state.selectedNote = state.selectedNote === noteName ? null : noteName;
   renderControlPanel();
 }
@@ -1038,6 +1072,7 @@ function clearPicker() {
   state.missedMarks = {};
   state.pickerChecked = false;
   state.selectedNote = null;
+  state.selectedFret = null;
   renderFretboard();
   renderControlPanel();
 }
@@ -1048,6 +1083,7 @@ function showAllPicker() {
   state.missedMarks = {};
   state.pickerChecked = false;
   state.selectedNote = null;
+  state.selectedFret = null;
   for (let s = 0; s < STRING_COUNT; s++) {
     for (let f = 1; f <= FRET_COUNT; f++) {
       const note = getNoteAt(s, f);
@@ -1132,6 +1168,8 @@ function setNaturalNotes(on) {
     state.correctMarks = {};
     state.missedMarks = {};
     state.pickerChecked = false;
+    state.selectedNote = null;
+    state.selectedFret = null;
   }
   renderFretboard();
   renderControlPanel();
@@ -1269,7 +1307,7 @@ function renderPickerPanel() {
   return `<div style="text-align:center">
     ${renderNaturalNotesToggle()}
     <p style="margin-bottom:6px;color:var(--text-secondary);font-size:0.85rem">
-      ${state.pickerChecked ? 'Results:' : state.selectedNote ? `Placing: <strong>${state.selectedNote}</strong>` : 'Select a note, then tap the fretboard'}
+      ${state.pickerChecked ? 'Results:' : state.selectedFret ? `Fret selected — pick a note below` : state.selectedNote ? `Placing: <strong>${state.selectedNote}</strong>` : 'Tap a fret, then pick its note below'}
     </p>
     <div class="note-selector">${noteBtns}</div>
     <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
@@ -1409,6 +1447,7 @@ function switchMode(mode) {
       state.missedMarks = {};
       state.pickerChecked = false;
       state.selectedNote = null;
+      state.selectedFret = null;
       break;
   }
 
@@ -1457,6 +1496,7 @@ function changeTuning(tuning) {
     state.missedMarks = {};
     state.pickerChecked = false;
     state.selectedNote = null;
+    state.selectedFret = null;
   }
   renderControlPanel();
   saveState();
