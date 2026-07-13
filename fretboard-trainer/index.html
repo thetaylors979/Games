@@ -261,6 +261,7 @@ select{
 <nav id="modeTabs">
   <button class="mode-tab active" data-mode="flashcard">🎯 Flashcard</button>
   <button class="mode-tab" data-mode="simplified">🎯 Simplified</button>
+  <button class="mode-tab" data-mode="picker">📝 Note Picker</button>
   <button class="mode-tab" data-mode="reverse">🔍 Reverse</button>
   <button class="mode-tab" data-mode="freedraw">✏️ Free Draw</button>
   <button class="mode-tab" data-mode="speed">⏱️ Speed Round</button>
@@ -349,6 +350,10 @@ let state = {
   showSettings: false,
   showStats: false,
   showAnswers: false,
+  // Note Picker mode
+  selectedNote: null,   // which note button is active (e.g., 'C')
+  placedNotes: {},      // { 'string-fret': 'C' } — note placed at each position
+  pickerChecked: false, // whether Check has been pressed
   // Per-note tracking
   noteStats: {},        // { 'C': { correct, total }, ... }
 };
@@ -626,6 +631,19 @@ function renderFretboard() {
         circle.classList.add('highlight-target');
       }
 
+      // Note Picker mode visual state
+      if (state.mode === 'picker' && state.placedNotes[key]) {
+        if (state.pickerChecked) {
+          if (state.correctMarks[key]) {
+            circle.classList.add('filled-correct');
+          } else {
+            circle.classList.add('filled-wrong');
+          }
+        } else {
+          circle.classList.add('filled-user');
+        }
+      }
+
       circle.addEventListener('click', () => onCircleClick(s, f, key));
       circle.addEventListener('touchend', (e) => {
         e.preventDefault();
@@ -634,9 +652,9 @@ function renderFretboard() {
 
       svg.appendChild(circle);
 
-      // Show note label in free draw mode for marked circles
-      if (state.mode === 'freedraw' && state.userMarks[key]) {
-        const note = getNoteAt(s, f);
+      // Show note label in free draw mode for marked circles, or picker mode for placed notes
+      if ((state.mode === 'freedraw' && state.userMarks[key]) || (state.mode === 'picker' && state.placedNotes[key])) {
+        const note = state.mode === 'picker' ? state.placedNotes[key] : getNoteAt(s, f);
         const text = document.createElementNS(SVG_NS, 'text');
         text.setAttribute('x', x);
         text.setAttribute('y', y + 5);
@@ -728,6 +746,9 @@ function onCircleClick(stringIdx, fret, key) {
       break;
     case 'simplified':
       handleSimplifiedClick(key, note);
+      break;
+    case 'picker':
+      handlePickerClick(stringIdx, fret, key, note);
       break;
   }
 }
@@ -1031,6 +1052,85 @@ function checkSimplified() {
   saveState();
 }
 
+// ===== NOTE PICKER MODE =====
+function handlePickerClick(stringIdx, fret, key, note) {
+  if (state.pickerChecked) return;
+  if (!state.selectedNote) {
+    showToast('Select a note first 👆');
+    return;
+  }
+  // Toggle: if already placed with same note, remove it; otherwise place/overwrite
+  if (state.placedNotes[key] === state.selectedNote) {
+    delete state.placedNotes[key];
+  } else {
+    state.placedNotes[key] = state.selectedNote;
+  }
+  renderFretboard();
+  renderControlPanel();
+}
+
+function selectPickerNote(noteName) {
+  if (state.pickerChecked) return;
+  state.selectedNote = state.selectedNote === noteName ? null : noteName;
+  renderControlPanel();
+}
+
+function checkPicker() {
+  state.pickerChecked = true;
+  state.totalAttempts += Object.keys(state.placedNotes).length;
+  let correct = 0;
+  for (const [key, placedNote] of Object.entries(state.placedNotes)) {
+    const [s, f] = key.split('-').map(Number);
+    const actualNote = getNoteAt(s, f);
+    if (placedNote === actualNote) {
+      correct++;
+      state.correctMarks[key] = true;
+      trackNoteStat(placedNote, true);
+    } else {
+      trackNoteStat(placedNote, false);
+    }
+  }
+  state.correctAttempts += correct;
+  if (correct === Object.keys(state.placedNotes).length && Object.keys(state.placedNotes).length > 0) {
+    state.streak++;
+    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+    showToast('✅ All correct!');
+  } else {
+    state.streak = 0;
+    const wrong = Object.keys(state.placedNotes).length - correct;
+    showToast(`${correct} correct, ${wrong} wrong`);
+  }
+  renderFretboard();
+  renderControlPanel();
+  saveState();
+}
+
+function clearPicker() {
+  state.placedNotes = {};
+  state.correctMarks = {};
+  state.missedMarks = {};
+  state.pickerChecked = false;
+  state.selectedNote = null;
+  renderFretboard();
+  renderControlPanel();
+}
+
+function showAllPicker() {
+  state.placedNotes = {};
+  state.correctMarks = {};
+  state.missedMarks = {};
+  state.pickerChecked = false;
+  state.selectedNote = null;
+  for (let s = 0; s < STRING_COUNT; s++) {
+    for (let f = 1; f <= FRET_COUNT; f++) {
+      const note = getNoteAt(s, f);
+      if (note) state.placedNotes[`${s}-${f}`] = note;
+    }
+  }
+  renderFretboard();
+  renderControlPanel();
+}
+
 // ===== STATS =====
 function trackNoteStat(note, correct) {
   if (!state.noteStats[note]) {
@@ -1080,6 +1180,9 @@ function renderControlPanel() {
       break;
     case 'speed':
       html += renderSpeedPanel();
+      break;
+    case 'picker':
+      html += renderPickerPanel();
       break;
   }
 
@@ -1201,6 +1304,44 @@ function renderSpeedPanel() {
         <option value="120">120s</option>
       </select>
       <button class="btn btn-primary" onclick="startSpeedRound()">▶️ Start</button>
+      <button class="btn btn-secondary btn-sm" onclick="showChart()">📊 Chart</button>
+    </div>
+  </div>`;
+}
+
+function renderPickerPanel() {
+  const placedCount = Object.keys(state.placedNotes).length;
+  const noteBtns = NOTES.map(n => {
+    const isSelected = state.selectedNote === n;
+    const count = Object.values(state.placedNotes).filter(v => v === n).length;
+    return `<button class="note-btn ${isSelected ? 'selected' : ''}" 
+      onclick="selectPickerNote('${n}')" ${state.pickerChecked ? 'disabled' : ''}>
+      ${n}${count > 0 ? `<small>${count}</small>` : ''}
+    </button>`;
+  }).join('');
+
+  let actionBtns = '';
+  if (state.pickerChecked) {
+    const correct = Object.keys(state.correctMarks).length;
+    const total = Object.keys(state.placedNotes).length;
+    const wrong = total - correct;
+    actionBtns = `<p style="text-align:center;color:var(--text-secondary);font-size:0.85rem">
+      ${correct} ✅ ${wrong > 0 ? wrong + ' ❌' : ''}
+    </p>
+    <button class="btn btn-primary" onclick="clearPicker()">🔄 New Board</button>`;
+  } else {
+    actionBtns = `<button class="btn btn-primary" onclick="checkPicker()" ${placedCount === 0 ? 'disabled' : ''}>✓ Check (${placedCount})</button>
+    <button class="btn btn-secondary" onclick="clearPicker()">🗑️ Clear</button>
+    <button class="btn btn-secondary btn-sm" onclick="showAllPicker()">👁️ Show All</button>`;
+  }
+
+  return `<div style="text-align:center">
+    <p style="margin-bottom:6px;color:var(--text-secondary);font-size:0.85rem">
+      ${state.pickerChecked ? 'Results:' : state.selectedNote ? `Placing: <strong>${state.selectedNote}</strong>` : 'Select a note, then tap the fretboard'}
+    </p>
+    <div class="note-selector">${noteBtns}</div>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      ${actionBtns}
       <button class="btn btn-secondary btn-sm" onclick="showChart()">📊 Chart</button>
     </div>
   </div>`;
@@ -1346,6 +1487,13 @@ function switchMode(mode) {
     case 'simplified':
       newSimplifiedCard();
       break;
+    case 'picker':
+      state.placedNotes = {};
+      state.correctMarks = {};
+      state.missedMarks = {};
+      state.pickerChecked = false;
+      state.selectedNote = null;
+      break;
   }
 
   renderFretboard();
@@ -1388,6 +1536,13 @@ function changeTuning(tuning) {
   if (state.mode === 'flashcard' || state.mode === 'zone') newFlashcard();
   if (state.mode === 'simplified') newSimplifiedCard();
   if (state.mode === 'reverse') newReverseQuestion();
+  if (state.mode === 'picker') {
+    state.placedNotes = {};
+    state.correctMarks = {};
+    state.missedMarks = {};
+    state.pickerChecked = false;
+    state.selectedNote = null;
+  }
   renderControlPanel();
   saveState();
 }
