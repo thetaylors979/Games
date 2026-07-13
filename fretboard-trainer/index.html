@@ -463,7 +463,8 @@ function findAllPositions(noteName) {
 
 
 function getRandomNote(includeSharps=true) {
-  const pool = includeSharps ? NOTES : NATURAL_NOTES;
+  // When naturalNotesOnly is on, only pick from natural notes
+  const pool = (includeSharps && !state.naturalNotesOnly) ? NOTES : NATURAL_NOTES;
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
