@@ -204,6 +204,72 @@ main{
   display:flex; align-items:center; justify-content:center;
 }
 .notes-close-btn:hover{background:var(--bg)}
+
+/* ===== NOTE HUNT ===== */
+.note-hunt-target{
+  background:var(--accent); color:#fff; padding:8px 20px; border-radius:20px;
+  font-weight:700; font-size:1.1rem; display:inline-block; animation:pulse 1.5s infinite;
+}
+.timer-display{
+  font-family:'monospace',monospace; font-size:1rem; font-weight:700;
+  color:var(--text-secondary);
+}
+
+/* ===== REVERSE DRILL ===== */
+@keyframes drill-pulse{
+  0%,100%{stroke:var(--accent);stroke-width:3}
+  50%{stroke:var(--accent);stroke-width:5}
+}
+.drill-active circle{animation:drill-pulse 1s infinite}
+
+/* ===== TRAINING DAY BADGE ===== */
+.training-day-badge {
+  background: linear-gradient(135deg, #8e44ad, #9b59b6);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* ===== TRAINING INFO PANEL ===== */
+.training-info-panel {
+  width: 100%;
+  background: linear-gradient(135deg, var(--surface), var(--bg));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 16px;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+}
+.training-info-panel.show {
+  display: flex;
+}
+.training-info-panel .day-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--accent);
+}
+.training-info-panel .activity-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.training-info-panel .activity-progress {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+/* ===== TRAINING OVERLAY / GRADUATION BUTTONS ===== */
+.overlay-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
 </style>
 </head>
 <body>
@@ -211,7 +277,7 @@ main{
 <header>
   <h1>🎸 <span class="accent">FretTrainer</span></h1>
   <div class="header-actions">
-    <a href="http://100.124.6.90:8080/" class="icon-btn" title="Return to Launcher">🏠</a>
+    <a href="../" class="icon-btn" title="Return to Launcher">🏠</a>
     <button class="icon-btn" id="btnSettings" title="Settings">⚙️</button>
     <button class="icon-btn" id="btnDarkMode" title="Dark Mode">🌙</button>
   </div>
@@ -219,6 +285,7 @@ main{
 
 <div class="round-bar" id="roundBar" style="display:none">
   <div class="round-info">
+    <span class="training-day-badge" id="trainingDayBadge" style="display:none"></span>
     <span class="round-badge" id="roundBadge">Round 1</span>
     <span class="stat-mini">Score: <strong id="scoreDisplay">0</strong></span>
     <span class="stat-mini">Streak: <strong id="streakDisplay">0</strong></span>
@@ -230,8 +297,18 @@ main{
   <!-- Start screen -->
   <div class="start-screen" id="startScreen">
     <h2>🎸 FretTrainer</h2>
-    <p>Learn the fretboard one fret at a time. Place the correct note on each string. Complete all 6 to advance to the next round.</p>
-    <button class="btn btn-primary" style="font-size:1.1rem;padding:12px 32px" onclick="startGame()">▶️ Start</button>
+    <p>Learn the fretboard. Choose your mode.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px">
+      <button class="btn btn-primary" style="font-size:1.1rem;padding:12px 32px" onclick="startFreeform()">🎸 Freeform</button>
+      <button class="btn btn-primary" style="font-size:1.1rem;padding:12px 32px" onclick="startTraining()">🎓 Training Mode</button>
+    </div>
+  </div>
+
+  <!-- Training info panel (shown only in training mode) -->
+  <div class="training-info-panel" id="trainingInfoPanel">
+    <div class="day-title" id="trainingDayTitle"></div>
+    <div class="activity-label" id="trainingActivityLabel"></div>
+    <div class="activity-progress" id="trainingActivityProgress"></div>
   </div>
 
   <!-- Fretboard (hidden until game starts) -->
@@ -249,16 +326,21 @@ main{
       <p id="overlaySubtitle"></p>
       <div class="big-score" id="overlayScore"></div>
       <div class="progress-dots" id="overlayDots"></div>
+      <div class="overlay-buttons" id="overlayButtons"></div>
     </div>
   </div>
 
   <!-- Completion screen -->
   <div class="completion-screen" id="completionScreen" style="display:none">
-    <h2>🏆 FretTrainer Complete!</h2>
-    <p style="color:var(--text-secondary)">You mastered all 12 frets!</p>
+    <h2 id="completionEmoji">🏆</h2>
+    <h2 id="completionTitle">FretTrainer Complete!</h2>
+    <p style="color:var(--text-secondary)" id="completionSubtitle">You mastered all 12 frets!</p>
     <div class="final-score" id="finalScore">0</div>
     <p style="color:var(--text-secondary)" id="finalAccuracy"></p>
-    <button class="btn btn-primary" style="font-size:1.1rem;padding:12px 32px" onclick="restartGame(); document.getElementById('completionScreen').style.display='none'; document.getElementById('fretboardWrap').style.display='block'; document.getElementById('controlPanel').style.display='flex'; document.getElementById('roundBar').style.display='flex';">▶️ Play Again</button>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-primary" style="font-size:1.1rem;padding:12px 32px" id="completionPlayAgain">▶️ Play Again</button>
+      <button class="btn btn-secondary" style="font-size:1.1rem;padding:12px 32px" id="completionBackMenu">🏠 Back to Menu</button>
+    </div>
   </div>
 </main>
 
@@ -292,6 +374,90 @@ const TUNINGS = {
   'Half Step Down':     ['D#','G#','C#','F#','A#','D#'],
 };
 
+// ===== 7-DAY TRAINING CURRICULUM =====
+const TRAINING_CURRICULUM = [
+  {
+    day: 1,
+    title: "Musical Alphabet & Natural Notes",
+    description: "Learn the natural notes A-G and the special B-C / E-F pairs. Start with the open strings, then place natural notes on frets 1-3 across all strings.",
+    notesMode: 'natural', // natural notes only
+    activities: [
+      { type: 'fretPlacement', frets: [-1], strings: 'all', label: 'Open Strings — Natural Notes' },
+      { type: 'fretPlacement', frets: [1], strings: 'all', label: 'Fret 1 — Natural Notes' },
+      { type: 'fretPlacement', frets: [2], strings: 'all', label: 'Fret 2 — Natural Notes' },
+      { type: 'fretPlacement', frets: [3], strings: 'all', label: 'Fret 3 — Natural Notes' },
+    ]
+  },
+  {
+    day: 2,
+    title: "Low E String Mapping",
+    description: "Map every natural note on the low E (6th) string, frets 1-12. Then find every C on the low E string.",
+    notesMode: 'natural',
+    activities: [
+      { type: 'fretPlacement', frets: [1,2,3,4,5,6,7,8,9,10,11,12], strings: [5], label: 'Low E String — All Frets' },
+      { type: 'noteHunt', targetNote: 'C', strings: [5], frets: [1,2,3,4,5,6,7,8,9,10,11,12], label: 'Find every C on Low E' },
+      { type: 'noteHunt', targetNote: 'G', strings: [5], frets: [1,2,3,4,5,6,7,8,9,10,11,12], label: 'Find every G on Low E' },
+    ]
+  },
+  {
+    day: 3,
+    title: "A String Mapping",
+    description: "Map every natural note on the A (5th) string. Random note recall on both E and A strings.",
+    notesMode: 'natural',
+    activities: [
+      { type: 'fretPlacement', frets: [1,2,3,4,5,6,7,8,9,10,11,12], strings: [4], label: 'A String — All Frets' },
+      { type: 'noteHunt', targetNote: 'D', strings: [4,5], frets: [1,2,3,4,5,6,7,8,9,10,11,12], label: 'Find every D on E & A strings' },
+      { type: 'noteHunt', targetNote: 'A', strings: [4,5], frets: [1,2,3,4,5,6,7,8,9,10,11,12], label: 'Find every A on E & A strings' },
+    ]
+  },
+  {
+    day: 4,
+    title: "Octave Patterns — D & G Strings",
+    description: "Use octave relationships from E/A strings to find notes on D and G strings. The app highlights octave connections.",
+    notesMode: 'natural',
+    activities: [
+      { type: 'fretPlacement', frets: [1,2,3,4,5,6,7,8,9,10,11,12], strings: [3], label: 'D String — All Frets' },
+      { type: 'fretPlacement', frets: [1,2,3,4,5,6,7,8,9,10,11,12], strings: [2], label: 'G String — All Frets' },
+      { type: 'noteHunt', targetNote: 'C', strings: [2,3,4,5], frets: [1,2,3,4,5,6,7,8,9,10,11,12], label: 'Find every C on E/A/D/G' },
+    ]
+  },
+  {
+    day: 5,
+    title: "B String + High E — The Offset",
+    description: "The G→B string relationship differs (major 3rd, not perfect 4th). Learn the B string and high E string.",
+    notesMode: 'natural',
+    activities: [
+      { type: 'fretPlacement', frets: [1,2,3,4,5,6,7,8,9,10,11,12], strings: [1], label: 'B String — All Frets' },
+      { type: 'fretPlacement', frets: [1,2,3,4,5,6,7,8,9,10,11,12], strings: [0], label: 'High E String — All Frets' },
+      { type: 'noteHunt', targetNote: 'F', strings: [0,1,2,3,4,5], frets: [1,2,3,4,5,6,7,8,9,10,11,12], label: 'Find every F — All Strings' },
+    ]
+  },
+  {
+    day: 6,
+    title: "Full Natural-Note Board",
+    description: "Timed recall across all 6 strings. Find every occurrence of 4 random natural notes.",
+    notesMode: 'natural',
+    activities: [
+      { type: 'noteHunt', targetNote: 'random', strings: [0,1,2,3,4,5], frets: [1,2,3,4,5,6,7,8,9,10,11,12], label: 'Note Hunt — Random Natural #1' },
+      { type: 'noteHunt', targetNote: 'random', strings: [0,1,2,3,4,5], frets: [1,2,3,4,5,6,7,8,9,10,11,12], label: 'Note Hunt — Random Natural #2' },
+      { type: 'noteHunt', targetNote: 'random', strings: [0,1,2,3,4,5], frets: [1,2,3,4,5,6,7,8,9,10,11,12], label: 'Note Hunt — Random Natural #3' },
+      { type: 'noteHunt', targetNote: 'random', strings: [0,1,2,3,4,5], frets: [1,2,3,4,5,6,7,8,9,10,11,12], label: 'Note Hunt — Random Natural #4' },
+    ]
+  },
+  {
+    day: 7,
+    title: "Chromatic Board + Graduation",
+    description: "Full chromatic notes on all strings. Find every instance of chromatic notes. Final graduation drill.",
+    notesMode: 'chromatic',
+    activities: [
+      { type: 'fretPlacement', frets: [1,2,3,4,5,6,7,8,9,10,11,12], strings: 'all', label: 'Full Chromatic — All Frets' },
+      { type: 'noteHunt', targetNote: 'random', strings: [0,1,2,3,4,5], frets: [1,2,3,4,5,6,7,8,9,10,11,12], label: 'Chromatic Note Hunt #1' },
+      { type: 'noteHunt', targetNote: 'random', strings: [0,1,2,3,4,5], frets: [1,2,3,4,5,6,7,8,9,10,11,12], label: 'Chromatic Note Hunt #2' },
+      { type: 'reverseDrill', strings: 'all', frets: [1,2,3,4,5,6,7,8,9,10,11,12], label: 'Name That Note — Graduation' },
+    ]
+  },
+];
+
 // ===== STATE =====
 let state = {
   // Settings
@@ -320,6 +486,25 @@ let state = {
   roundErrors: 0,
   // Settings panel
   showSettings: false,
+  // Training mode state
+  trainingMode: false,      // true when in training mode
+  trainingDay: 0,           // 0 = not started, 1-7 = current day
+  trainingActivityIndex: 0, // index into current day's activity list
+  trainingScore: 0,         // separate score for training
+  trainingCompletedDays: [], // which days are done
+  // Note Hunt drill state
+  noteHuntTarget: null,      // the note to find
+  noteHuntStrings: [0,1,2,3,4,5], // which strings to hunt on
+  noteHuntFrets: [1,2,3,4,5,6,7,8,9,10,11,12], // which frets
+  noteHuntFound: [],         // keys of found notes
+  noteHuntErrors: 0,
+  noteHuntStartTime: 0,
+  noteHuntTimerInterval: null,
+  // Reverse Drill state
+  reverseDrillPositions: [],  // array of {string, fret} to quiz
+  reverseDrillIndex: 0,
+  reverseDrillErrors: 0,
+  reverseDrillTotal: 0,
 };
 
 // ===== LOAD / SAVE =====
@@ -336,6 +521,9 @@ function loadState() {
       state.totalScore = s.totalScore || 0;
       state.naturalNotesOnly = s.naturalNotesOnly !== false; // default true
       state.bestScore = s.bestScore || 0;
+      state.trainingDay = s.trainingDay || 0;
+      state.trainingCompletedDays = s.trainingCompletedDays || [];
+      state.trainingScore = s.trainingScore || 0;
     }
   } catch(e) {}
   applyTuning();
@@ -352,6 +540,9 @@ function saveState() {
       bestStreak: state.bestStreak || 0,
       bestScore: state.bestScore || 0,
       naturalNotesOnly: state.naturalNotesOnly,
+      trainingDay: state.trainingDay,
+      trainingCompletedDays: state.trainingCompletedDays || [],
+      trainingScore: state.trainingScore,
     }));
   } catch(e) {}
 }
@@ -431,6 +622,10 @@ function renderFretboard() {
   // Determine which fret to show (-1 = open strings, 0-12 = specific, -2 = random)
   const showFret = state.currentFret;
   const isRandomRound = showFret === -2;
+  const isNoteHunt = showFret === -3;
+  const isReverseDrill = showFret === -4;
+  // In Note Hunt / Reverse Drill, all fret lines are active (no single highlight)
+  const allFretsActive = isNoteHunt || isReverseDrill;
 
   // --- Strings (horizontal lines) ---
   for (let s = 0; s < STRING_COUNT; s++) {
@@ -459,7 +654,7 @@ function renderFretboard() {
   // Show all 12 fret lines (light), but highlight the active one
   for (let f = 1; f <= FRET_COUNT; f++) {
     const x = B.x + f * fretSpacing;
-    const isActive = (showFret === f) || isRandomRound;
+    const isActive = (showFret === f) || isRandomRound || allFretsActive;
     const line = document.createElementNS(SVG_NS, 'line');
     line.setAttribute('x1', x);
     line.setAttribute('y1', B.y + B.topMargin);
@@ -503,7 +698,7 @@ function renderFretboard() {
   // --- Fret number labels (bottom) ---
   for (let f = 1; f <= FRET_COUNT; f++) {
     const x = B.x + (f - 0.5) * fretSpacing;
-    const isActive = (showFret === f) || isRandomRound;
+    const isActive = (showFret === f) || isRandomRound || allFretsActive;
     const text = document.createElementNS(SVG_NS, 'text');
     text.setAttribute('x', x);
     text.setAttribute('y', 395);
@@ -518,7 +713,7 @@ function renderFretboard() {
 
   // --- Note circles for completed frets (blank, not interactive) ---
   // Show blank bubbles on all completed frets before the current one
-  if (showFret >= 1 || isRandomRound) {
+  if ((showFret >= 1 || isRandomRound) && !isNoteHunt && !isReverseDrill) {
     const maxCompletedFret = isRandomRound ? FRET_COUNT : (showFret >= 1 ? showFret - 1 : 0);
     for (let cf = 1; cf <= maxCompletedFret; cf++) {
       for (let s = 0; s < STRING_COUNT; s++) {
@@ -535,6 +730,100 @@ function renderFretboard() {
         circle.setAttribute('opacity', '0.4');
         svg.appendChild(circle);
       }
+    }
+  }
+
+  // --- NOTE HUNT: render all tappable bubbles in the hunt range ---
+  if (isNoteHunt) {
+    for (let s = 0; s < STRING_COUNT; s++) {
+      if (!state.noteHuntStrings.includes(s)) continue;
+      for (const f of state.noteHuntFrets) {
+        if (state.naturalNotesOnly && !NATURAL_NOTES.includes(getNoteAt(s, f))) continue;
+        const x = B.x + (f - 0.5) * fretSpacing;
+        const y = B.y + B.topMargin + s * stringSpacing;
+        const key = `${s}-${f}`;
+        const placed = state.placedNotes[key];
+        const correctNote = getNoteAt(s, f);
+
+        const circle = document.createElementNS(SVG_NS, 'circle');
+        circle.setAttribute('cx', x);
+        circle.setAttribute('cy', y);
+        circle.setAttribute('r', 20);
+        circle.setAttribute('stroke-width', '1.5');
+        circle.classList.add('note-circle');
+        circle.dataset.key = key;
+
+        if (placed) {
+          // Correct or wrong?
+          if (placed === correctNote) {
+            circle.setAttribute('fill', '#27ae60');
+            circle.setAttribute('stroke', '#27ae60');
+          } else {
+            circle.setAttribute('fill', '#e74c3c');
+            circle.setAttribute('stroke', '#e74c3c');
+          }
+        } else {
+          circle.setAttribute('fill', dark ? '#1a1a3e' : '#fff');
+          circle.setAttribute('stroke', dark ? '#3a3a5a' : '#c4b896');
+        }
+
+        circle.addEventListener('click', () => onCircleClick(s, f, key));
+        circle.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          onCircleClick(s, f, key);
+        });
+        svg.appendChild(circle);
+
+        // Show note label if placed
+        if (placed) {
+          addNoteLabel(svg, x, y, placed);
+        }
+      }
+    }
+  }
+
+  // --- REVERSE DRILL: render one highlighted position + completed positions ---
+  if (isReverseDrill) {
+    // Completed positions shown as green/blank bubbles
+    for (let idx = 0; idx < state.reverseDrillIndex; idx++) {
+      const pos = state.reverseDrillPositions[idx];
+      if (!pos) continue;
+      const key = `${pos.string}-${pos.fret}`;
+      const placed = state.placedNotes[key];
+      const x = B.x + (pos.fret - 0.5) * fretSpacing;
+      const y = B.y + B.topMargin + pos.string * stringSpacing;
+      const circle = document.createElementNS(SVG_NS, 'circle');
+      circle.setAttribute('cx', x);
+      circle.setAttribute('cy', y);
+      circle.setAttribute('r', 20);
+      circle.setAttribute('stroke-width', '1.5');
+      if (placed) {
+        circle.setAttribute('fill', '#27ae60');
+        circle.setAttribute('stroke', '#27ae60');
+      } else {
+        circle.setAttribute('fill', dark ? '#1a1a3e' : '#fff');
+        circle.setAttribute('stroke', dark ? '#3a3a5a' : '#c4b896');
+      }
+      svg.appendChild(circle);
+      if (placed) addNoteLabel(svg, x, y, placed);
+    }
+
+    // Current position — highlighted/pulsing bubble (not tappable)
+    const current = getCurrentReverseDrillPosition();
+    if (current) {
+      const x = B.x + (current.fret - 0.5) * fretSpacing;
+      const y = B.y + B.topMargin + current.string * stringSpacing;
+      const g = document.createElementNS(SVG_NS, 'g');
+      g.classList.add('drill-active');
+      const circle = document.createElementNS(SVG_NS, 'circle');
+      circle.setAttribute('cx', x);
+      circle.setAttribute('cy', y);
+      circle.setAttribute('r', 20);
+      circle.setAttribute('fill', dark ? '#1a1a3e' : '#fff');
+      circle.setAttribute('stroke', 'var(--accent)');
+      circle.setAttribute('stroke-width', '3');
+      g.appendChild(circle);
+      svg.appendChild(g);
     }
   }
 
@@ -678,6 +967,52 @@ function addNoteLabel(svg, x, y, note, color) {
 function onCircleClick(stringIdx, fret, key) {
   if (state.roundComplete) return;
 
+  // Reverse Drill — circles aren't tappable
+  if (state.currentFret === -4) {
+    return;
+  }
+
+  // Note Hunt — the note is pre-armed, check placement
+  if (state.currentFret === -3) {
+    if (!state.selectedNote) return;
+
+    // Play the note
+    const actualFret = fret === -1 ? 0 : fret;
+    const note = getNoteAt(stringIdx, actualFret);
+    if (note) playNote(note, getOctave(stringIdx, actualFret));
+
+    const correctNote = getNoteAt(stringIdx, fret);
+    if (state.selectedNote !== correctNote) {
+      // Wrong placement
+      state.placedNotes[key] = state.selectedNote;
+      state.totalAttempts++;
+      state.streak = 0;
+      state.noteHuntErrors++;
+      state.roundErrors++;
+      state.score = Math.max(0, state.score - 5);
+      showToast(`❌ Wrong! That's ${correctNote}`);
+      renderFretboard();
+      renderControlPanel();
+      updateRoundBar();
+      return;
+    }
+
+    // Correct!
+    state.placedNotes[key] = state.selectedNote;
+    state.totalAttempts++;
+    state.correctAttempts++;
+    state.score += 15;
+    state.streak++;
+    if (state.streak > (state.bestStreak || 0)) state.bestStreak = state.streak;
+    state.noteHuntFound.push(key);
+    showToast('✅ Found!');
+    checkNoteHuntComplete();
+    renderFretboard();
+    renderControlPanel();
+    updateRoundBar();
+    return;
+  }
+
   // Need a note armed first
   if (!state.selectedNote) {
     showToast('Pick a note below first ↓');
@@ -725,6 +1060,18 @@ function onCircleClick(stringIdx, fret, key) {
 // ===== NOTE SELECTOR (arm/disarm) =====
 function selectNote(noteName) {
   if (state.roundComplete) return;
+
+  // Reverse drill — tapping a note submits it as the answer
+  if (state.currentFret === -4) {
+    checkReverseDrillAnswer(noteName);
+    return;
+  }
+
+  // Note hunt — note is pre-armed, don't allow changing
+  if (state.currentFret === -3) {
+    return;
+  }
+
   // Toggle: tap same note to disarm
   if (state.selectedNote === noteName) {
     state.selectedNote = null;
@@ -737,6 +1084,14 @@ function selectNote(noteName) {
 
 // ===== CHECK ROUND COMPLETE =====
 function checkRoundComplete() {
+  if (state.currentFret === -3) {
+    checkNoteHuntComplete();
+    return;
+  }
+  if (state.currentFret === -4) {
+    // Reverse drill completion is handled in checkReverseDrillAnswer
+    return;
+  }
   // Count how many targets need to be placed
   const targetKeys = getRoundTargetKeys();
   const allPlaced = targetKeys.every(k => state.placedNotes[k]);
@@ -794,8 +1149,163 @@ function getRoundTargetKeys() {
   return keys;
 }
 
+// ============================================================
+// NOTE HUNT DRILL
+// ============================================================
+function startNoteHunt(targetNote, strings, frets) {
+  state.currentFret = -3; // Note Hunt mode marker
+  state.noteHuntTarget = targetNote;
+  state.noteHuntStrings = strings || [0,1,2,3,4,5];
+  state.noteHuntFrets = frets || [1,2,3,4,5,6,7,8,9,10,11,12];
+  state.noteHuntFound = [];
+  state.noteHuntErrors = 0;
+  state.placedNotes = {};
+  state.selectedNote = targetNote; // pre-arm the target note
+  state.roundComplete = false;
+  state.roundErrors = 0;
+  state.noteHuntStartTime = Date.now();
+
+  // Start timer display
+  if (state.noteHuntTimerInterval) clearInterval(state.noteHuntTimerInterval);
+  state.noteHuntTimerInterval = setInterval(updateNoteHuntTimer, 1000);
+
+  renderFretboard();
+  renderControlPanel();
+  updateRoundBar();
+}
+
+function getNoteHuntTargets() {
+  // Returns all string-fret pairs where the target note appears
+  const targets = [];
+  for (let s = 0; s < STRING_COUNT; s++) {
+    if (!state.noteHuntStrings.includes(s)) continue;
+    for (const f of state.noteHuntFrets) {
+      if (state.naturalNotesOnly && !NATURAL_NOTES.includes(getNoteAt(s, f))) continue;
+      if (getNoteAt(s, f) === state.noteHuntTarget) {
+        targets.push(`${s}-${f}`);
+      }
+    }
+  }
+  return targets;
+}
+
+function updateNoteHuntTimer() {
+  const elapsed = Math.floor((Date.now() - state.noteHuntStartTime) / 1000);
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  const timerEl = document.getElementById('noteHuntTimer');
+  if (timerEl) {
+    timerEl.textContent = `⏱ ${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+}
+
+function stopNoteHuntTimer() {
+  if (state.noteHuntTimerInterval) {
+    clearInterval(state.noteHuntTimerInterval);
+    state.noteHuntTimerInterval = null;
+  }
+}
+
+function checkNoteHuntComplete() {
+  const targets = getNoteHuntTargets();
+  const allFound = targets.every(k => state.placedNotes[k] === state.noteHuntTarget);
+  if (allFound && state.noteHuntErrors === 0) {
+    state.roundComplete = true;
+    state.score += 30; // bonus
+    stopNoteHuntTimer();
+    const elapsed = Math.floor((Date.now() - state.noteHuntStartTime) / 1000);
+    showToast(`🎉 All found in ${elapsed}s! +30 bonus`);
+    showRoundOverlay();
+    saveState();
+    renderControlPanel();
+  }
+}
+
+// ============================================================
+// REVERSE DRILL ("Name That Note")
+// ============================================================
+function startReverseDrill(strings, frets) {
+  state.currentFret = -4; // Reverse Drill mode marker
+  // Build list of all positions
+  const positions = [];
+  const stringList = strings === 'all' ? [0,1,2,3,4,5] : strings;
+  for (const s of stringList) {
+    for (const f of frets) {
+      if (state.naturalNotesOnly && !NATURAL_NOTES.includes(getNoteAt(s, f))) continue;
+      positions.push({ string: s, fret: f });
+    }
+  }
+  // Shuffle
+  for (let i = positions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [positions[i], positions[j]] = [positions[j], positions[i]];
+  }
+  state.reverseDrillPositions = positions;
+  state.reverseDrillIndex = 0;
+  state.reverseDrillErrors = 0;
+  state.reverseDrillTotal = positions.length;
+  state.placedNotes = {};
+  state.selectedNote = null;
+  state.roundComplete = false;
+  state.roundErrors = 0;
+
+  renderFretboard();
+  renderControlPanel();
+  updateRoundBar();
+}
+
+function getCurrentReverseDrillPosition() {
+  if (state.reverseDrillIndex >= state.reverseDrillPositions.length) return null;
+  return state.reverseDrillPositions[state.reverseDrillIndex];
+}
+
+function checkReverseDrillAnswer(noteName) {
+  const pos = getCurrentReverseDrillPosition();
+  if (!pos) return;
+
+  const correctNote = getNoteAt(pos.string, pos.fret);
+  state.totalAttempts++;
+
+  if (noteName === correctNote) {
+    state.correctAttempts++;
+    state.score += 10;
+    state.streak++;
+    // Mark this position as correct
+    const key = `${pos.string}-${pos.fret}`;
+    state.placedNotes[key] = noteName;
+    showToast('✅ Correct!');
+    state.reverseDrillIndex++;
+
+    if (state.reverseDrillIndex >= state.reverseDrillPositions.length) {
+      // All done!
+      state.roundComplete = true;
+      state.score += 20;
+      showToast('🎉 Reverse drill complete! +20 bonus');
+      showRoundOverlay();
+      saveState();
+    }
+    renderFretboard();
+    renderControlPanel();
+    updateRoundBar();
+  } else {
+    state.streak = 0;
+    state.reverseDrillErrors++;
+    state.roundErrors++;
+    state.score = Math.max(0, state.score - 3);
+    showToast(`❌ Wrong! It's ${correctNote}`);
+    // Don't advance — let them try again
+    renderFretboard();
+    renderControlPanel();
+    updateRoundBar();
+  }
+}
+
 // ===== NEXT ROUND =====
 function nextRound() {
+  if (state.trainingMode) {
+    nextTrainingActivity();
+    return;
+  }
   if (state.roundErrors > 0 || !state.roundComplete) return;
   state.currentRound++;
   setupRound();
@@ -872,6 +1382,68 @@ function renderControlPanel() {
   }
 
   const notePool = state.naturalNotesOnly ? NATURAL_NOTES : NOTES;
+
+  // Training mode header (activity label + instructions + back to menu)
+  let trainingHeader = '';
+  if (state.trainingMode) {
+    const day = TRAINING_CURRICULUM[state.trainingDay - 1];
+    const activity = day ? day.activities[state.trainingActivityIndex] : null;
+    trainingHeader = `<div style="text-align:center;margin-bottom:4px">
+      <p style="font-weight:700;font-size:0.95rem;color:var(--text)">${activity ? activity.label : ''}</p>
+      <p style="color:var(--text-secondary);font-size:0.8rem;margin-top:2px">${day ? day.description : ''}</p>
+      <button class="btn btn-secondary" style="font-size:0.8rem;padding:4px 12px;margin-top:8px" onclick="exitTraining()">🏠 Back to Menu</button>
+    </div>`;
+  }
+
+  // ---- NOTE HUNT control panel ----
+  if (state.currentFret === -3) {
+    const targets = getNoteHuntTargets();
+    const total = targets.length;
+    const timerHtml = `<p id="noteHuntTimer" class="timer-display">⏱ 0:00</p>`;
+    let progressDots = '';
+    if (total > 0) {
+      progressDots = `<div class="progress-dots">` +
+        targets.map(k => {
+          const placed = state.placedNotes[k] === state.noteHuntTarget;
+          return `<span class="progress-dot ${placed ? 'complete' : ''}"></span>`;
+        }).join('') +
+        `</div>`;
+    }
+    const noteBtns = notePool.map(n => {
+      const isSelected = state.selectedNote === n;
+      const disabled = n !== state.noteHuntTarget;
+      return `<button class="note-btn ${isSelected ? 'selected' : ''} ${disabled ? 'disabled' : ''}" 
+        onclick="selectNote('${n}')" ${disabled ? 'disabled' : ''}>${n}</button>`;
+    }).join('');
+    panel.innerHTML = `<div style="text-align:center">
+      ${trainingHeader}
+      <p style="font-size:1.1rem;font-weight:700;color:var(--accent)">🔍 Find every <span class="note-hunt-target">${state.noteHuntTarget}</span>!</p>
+      ${timerHtml}
+      <p style="font-size:0.85rem">Target note is armed. Tap each location where ${state.noteHuntTarget} appears.</p>
+      ${progressDots}
+      <div class="note-selector" style="margin-top:8px">${noteBtns}</div>
+    </div>`;
+    updateNoteHuntTimer();
+    return;
+  }
+
+  // ---- REVERSE DRILL control panel ----
+  if (state.currentFret === -4) {
+    const idx = Math.min(state.reverseDrillIndex + 1, state.reverseDrillTotal);
+    const noteBtns = notePool.map(n => {
+      const disabled = state.roundComplete;
+      return `<button class="note-btn ${disabled ? 'disabled' : ''}" 
+        onclick="selectNote('${n}')" ${disabled ? 'disabled' : ''}>${n}</button>`;
+    }).join('');
+    panel.innerHTML = `<div style="text-align:center">
+      ${trainingHeader}
+      <p style="font-size:1.1rem;font-weight:700;color:var(--accent)">📝 Name That Note!</p>
+      <p style="font-size:0.85rem">Position ${idx} of ${state.reverseDrillTotal} — What note is at the highlighted spot?</p>
+      <div class="note-selector" style="margin-top:8px">${noteBtns}</div>
+    </div>`;
+    return;
+  }
+
   const noteBtns = notePool.map(n => {
     const isSelected = state.selectedNote === n;
     const disabled = state.roundComplete;
@@ -914,14 +1486,16 @@ function renderControlPanel() {
   }
 
   panel.innerHTML = `<div style="text-align:center">
+    ${trainingHeader}
     ${toggleHtml}
     ${actionArea}
     <div class="note-selector" style="margin-top:8px">${noteBtns}</div>
   </div>`;
 }
 
-function startGame() {
+function startFreeform() {
   state.gameStarted = true;
+  state.trainingMode = false;
   state.currentRound = 0;
   state.score = 0;
   state.streak = 0;
@@ -956,6 +1530,272 @@ function restartGame() {
   updateRoundBar();
 }
 
+// ===== TRAINING MODE =====
+function startTraining() {
+  state.trainingMode = true;
+  state.gameStarted = true;
+  state.trainingDay = state.trainingDay || 1;
+  state.trainingActivityIndex = 0;
+  state.trainingScore = 0;
+  state.score = 0;
+  state.streak = 0;
+  state.totalAttempts = 0;
+  state.correctAttempts = 0;
+  
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('fretboardWrap').style.display = 'block';
+  document.getElementById('controlPanel').style.display = 'flex';
+  document.getElementById('roundBar').style.display = 'flex';
+  
+  setupTrainingActivity();
+  renderFretboard();
+  renderControlPanel();
+  updateRoundBar();
+  updateShowNotesBtn();
+}
+
+function setupTrainingActivity() {
+  const day = TRAINING_CURRICULUM[state.trainingDay - 1];
+  if (!day) return;
+  const activity = day.activities[state.trainingActivityIndex];
+  if (!activity) {
+    // Day complete!
+    showTrainingDayComplete();
+    return;
+  }
+  
+  // Set notes mode based on curriculum
+  state.naturalNotesOnly = (day.notesMode === 'natural');
+  
+  // Reset round state
+  state.placedNotes = {};
+  state.selectedNote = null;
+  state.roundComplete = false;
+  state.roundErrors = 0;
+  
+  if (activity.type === 'fretPlacement') {
+    // Set up fret placement activity — similar to existing round setup
+    // If activity.frets is a single fret, use currentFret = that fret
+    // If multiple frets, use currentFret = -2 (random) and set roundFrets
+    if (activity.frets.length === 1) {
+      state.currentFret = activity.frets[0];
+    } else if (activity.strings === 'all' || Array.isArray(activity.strings)) {
+      // Multiple frets — rotate through them
+      state.currentFret = -2; // random mode
+      state.roundFrets = [];
+      const strings = activity.strings === 'all' ? [0,1,2,3,4,5] : activity.strings;
+      for (let s = 0; s < STRING_COUNT; s++) {
+        if (strings.includes(s)) {
+          const fretIdx = state.trainingActivityIndex % activity.frets.length;
+          state.roundFrets.push(activity.frets[fretIdx]);
+        } else {
+          state.roundFrets.push(1); // dummy, won't be used
+        }
+      }
+    }
+  } else if (activity.type === 'noteHunt') {
+    // Note Hunt will be handled by Spawn 2's code
+    state.currentFret = -3; // special: note hunt mode
+    state.noteHuntTarget = activity.targetNote === 'random' 
+      ? (day.notesMode === 'natural' ? NATURAL_NOTES : NOTES)[Math.floor(Math.random() * (day.notesMode === 'natural' ? 7 : 12))]
+      : activity.targetNote;
+    state.noteHuntStrings = activity.strings === 'all' ? [0,1,2,3,4,5] : activity.strings;
+    state.noteHuntFrets = activity.frets;
+  } else if (activity.type === 'reverseDrill') {
+    // Reverse drill will be handled by Spawn 2's code
+    state.currentFret = -4; // special: reverse drill mode
+  }
+  showTrainingActivityToast();
+}
+
+function nextTrainingActivity() {
+  const day = TRAINING_CURRICULUM[state.trainingDay - 1];
+  if (!day) return;
+  state.trainingActivityIndex++;
+  if (state.trainingActivityIndex >= day.activities.length) {
+    // Day complete
+    state.trainingCompletedDays = state.trainingCompletedDays || [];
+    if (!state.trainingCompletedDays.includes(state.trainingDay)) {
+      state.trainingCompletedDays.push(state.trainingDay);
+    }
+    showTrainingDayComplete();
+    saveState();
+  } else {
+    setupTrainingActivity();
+    renderFretboard();
+    renderControlPanel();
+    updateRoundBar();
+    saveState();
+  }
+}
+
+function nextTrainingDay() {
+  state.trainingDay++;
+  state.trainingActivityIndex = 0;
+  if (state.trainingDay > 7) {
+    // Training complete!
+    showTrainingComplete();
+    return;
+  }
+  setupTrainingActivity();
+  renderFretboard();
+  renderControlPanel();
+  updateRoundBar();
+  saveState();
+}
+
+function showTrainingDayComplete() {
+  // Show overlay celebrating day completion
+  const overlay = document.getElementById('roundOverlay');
+  const title = document.getElementById('overlayTitle');
+  const subtitle = document.getElementById('overlaySubtitle');
+  const scoreEl = document.getElementById('overlayScore');
+  const dotsEl = document.getElementById('overlayDots');
+  
+  const day = TRAINING_CURRICULUM[state.trainingDay - 1];
+  const isLastDay = state.trainingDay === 7;
+  
+  title.textContent = `✅ Day ${state.trainingDay} Complete!`;
+  subtitle.textContent = day.title;
+  scoreEl.textContent = state.score + ' pts';
+  
+  // Training progress dots (7 days)
+  let dotsHtml = '';
+  for (let d = 1; d <= 7; d++) {
+    let cls = 'progress-dot';
+    if (state.trainingCompletedDays && state.trainingCompletedDays.includes(d)) cls += ' complete';
+    if (d === state.trainingDay) cls += ' current';
+    dotsHtml += `<span class="${cls}"></span>`;
+  }
+  dotsEl.innerHTML = dotsHtml;
+  
+  // Add Next Day button
+  const overlayContent = document.querySelector('.round-overlay-content');
+  // Remove any existing next-day button
+  const existingBtn = overlayContent.querySelector('.next-day-btn');
+  if (existingBtn) existingBtn.remove();
+  
+  if (!isLastDay) {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary next-day-btn';
+    btn.style.marginTop = '16px';
+    btn.textContent = `▶️ Day ${state.trainingDay + 1}`;
+    btn.onclick = () => { hideRoundOverlay(); nextTrainingDay(); };
+    overlayContent.appendChild(btn);
+  } else {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary next-day-btn';
+    btn.style.marginTop = '16px';
+    btn.textContent = '🎓 Graduate!';
+    btn.onclick = () => { hideRoundOverlay(); showTrainingComplete(); };
+    overlayContent.appendChild(btn);
+  }
+  
+  overlay.classList.add('show');
+}
+
+function showTrainingComplete() {
+  // Show graduation screen
+  document.getElementById('fretboardWrap').style.display = 'none';
+  document.getElementById('controlPanel').style.display = 'none';
+  document.getElementById('roundBar').style.display = 'none';
+  
+  const comp = document.getElementById('completionScreen');
+  comp.style.display = 'flex';
+  comp.innerHTML = `
+    <h2>🎓 Training Complete!</h2>
+    <p style="color:var(--text-secondary)">You've mastered the fretboard!</p>
+    <div class="final-score">${state.score}</div>
+    <p style="color:var(--text-secondary)">Accuracy: ${state.totalAttempts > 0 ? Math.round(state.correctAttempts / state.totalAttempts * 100) : 100}%</p>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px">
+      <button class="btn btn-primary" style="font-size:1.1rem;padding:12px 32px" onclick="restartTraining()">▶️ Play Again</button>
+      <button class="btn btn-secondary" style="font-size:1.1rem;padding:12px 32px" onclick="exitTraining()">🏠 Back to Menu</button>
+    </div>
+  `;
+}
+
+// Restart training from day 1 after graduation.
+function restartTraining() {
+  state.trainingDay = 1;
+  state.trainingActivityIndex = 0;
+  state.trainingScore = 0;
+  state.trainingCompletedDays = [];
+  state.trainingMode = true;
+  state.gameStarted = true;
+  state.score = 0;
+  state.streak = 0;
+  state.totalAttempts = 0;
+  state.correctAttempts = 0;
+  document.getElementById('completionScreen').style.display = 'none';
+  document.getElementById('fretboardWrap').style.display = 'block';
+  document.getElementById('controlPanel').style.display = 'flex';
+  document.getElementById('roundBar').style.display = 'flex';
+  setupTrainingActivity();
+  renderFretboard();
+  renderControlPanel();
+  updateRoundBar();
+  updateShowNotesBtn();
+  saveState();
+}
+
+function exitTraining() {
+  state.trainingMode = false;
+  state.gameStarted = false;
+  document.getElementById('completionScreen').style.display = 'none';
+  document.getElementById('fretboardWrap').style.display = 'none';
+  document.getElementById('controlPanel').style.display = 'none';
+  document.getElementById('roundBar').style.display = 'none';
+  document.getElementById('showNotesBtn').style.display = 'none';
+  document.getElementById('startScreen').style.display = 'flex';
+  renderStartScreen();
+}
+
+function resetTraining() {
+  state.trainingMode = false;
+  state.trainingDay = 0;
+  state.trainingActivityIndex = 0;
+  state.trainingScore = 0;
+  state.trainingCompletedDays = [];
+  saveState();
+  renderStartScreen();
+}
+
+// ===== TRAINING UI HELPERS =====
+// Show / hide + populate the training info panel above the fretboard.
+function updateTrainingInfoPanel() {
+  const panel = document.getElementById('trainingInfoPanel');
+  if (!panel) return;
+  if (!state.trainingMode) {
+    panel.classList.remove('show');
+    return;
+  }
+  const day = TRAINING_CURRICULUM[state.trainingDay - 1];
+  if (!day) {
+    panel.classList.remove('show');
+    return;
+  }
+  const activity = day.activities[state.trainingActivityIndex];
+  panel.classList.add('show');
+  document.getElementById('trainingDayTitle').textContent = `Day ${state.trainingDay}: ${day.title}`;
+  if (activity) {
+    document.getElementById('trainingActivityLabel').textContent = activity.label;
+    document.getElementById('trainingActivityProgress').textContent = `Activity ${state.trainingActivityIndex + 1} of ${day.activities.length}`;
+  } else {
+    document.getElementById('trainingActivityLabel').textContent = '';
+    document.getElementById('trainingActivityProgress').textContent = '';
+  }
+}
+
+// Brief toast when a new training activity starts.
+function showTrainingActivityToast() {
+  if (!state.trainingMode) return;
+  const day = TRAINING_CURRICULUM[state.trainingDay - 1];
+  if (!day) return;
+  const activity = day.activities[state.trainingActivityIndex];
+  if (!activity) return;
+  showToast(`📋 ${activity.label}`);
+}
+
 function setupRound() {
   state.placedNotes = {};
   state.selectedNote = null;
@@ -978,6 +1818,26 @@ function setupRound() {
 }
 
 function updateRoundBar() {
+  // Training day badge (purple gradient) — shown only in training mode
+  const trainingBadge = document.getElementById('trainingDayBadge');
+  if (trainingBadge) {
+    if (state.trainingMode) {
+      trainingBadge.style.display = 'inline-block';
+      trainingBadge.textContent = `Day ${state.trainingDay}`;
+    } else {
+      trainingBadge.style.display = 'none';
+    }
+  }
+  if (state.trainingMode) {
+    const day = TRAINING_CURRICULUM[state.trainingDay - 1];
+    const activity = day ? day.activities[state.trainingActivityIndex] : null;
+    document.getElementById('roundBadge').textContent = `Day ${state.trainingDay}: ${day ? day.title : ''}`;
+    document.getElementById('scoreDisplay').textContent = state.score;
+    document.getElementById('streakDisplay').textContent = state.streak;
+    const acc = state.totalAttempts > 0 ? Math.round(state.correctAttempts / state.totalAttempts * 100) : 100;
+    document.getElementById('accuracyDisplay').textContent = acc + '%';
+    return;
+  }
   document.getElementById('roundBadge').textContent = 
     state.currentRound === 0 ? 'Open Strings' : 
     state.currentRound <= 12 ? `Fret ${state.currentRound}` : 
@@ -986,6 +1846,7 @@ function updateRoundBar() {
   document.getElementById('streakDisplay').textContent = state.streak;
   const acc = state.totalAttempts > 0 ? Math.round(state.correctAttempts / state.totalAttempts * 100) : 100;
   document.getElementById('accuracyDisplay').textContent = acc + '%';
+  updateTrainingInfoPanel();
 }
 
 // ===== SETTINGS =====
@@ -1007,8 +1868,29 @@ function renderSettings() {
       <label style="font-weight:600;font-size:0.85rem;color:var(--text-secondary)">Audio:</label>
       <button class="btn btn-secondary" style="font-size:0.8rem;padding:4px 12px" onclick="toggleAudio()">${state.audioEnabled ? '✅ On' : '🔇 Off'}</button>
     </div>
+    ${buildTrainingSettingsSection()}
     <button class="btn btn-secondary" onclick="state.showSettings=false;renderControlPanel()">← Back</button>
   </div>`;
+}
+
+// ===== TRAINING SETTINGS SECTION =====
+function buildTrainingSettingsSection() {
+  // Only show if training has been started
+  const started = state.trainingDay > 0 || (state.trainingCompletedDays && state.trainingCompletedDays.length > 0);
+  if (!started) return '';
+  return `
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+      <h3 style="font-size:0.9rem;margin-bottom:8px">🎓 Training Progress</h3>
+      <div style="display:flex;gap:4px;margin-bottom:8px">
+        ${[1,2,3,4,5,6,7].map(d => {
+          const done = state.trainingCompletedDays && state.trainingCompletedDays.includes(d);
+          const current = d === state.trainingDay;
+          let bg = done ? 'var(--green)' : current ? 'var(--accent)' : 'var(--border)';
+          return `<span style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:${done||current?'#fff':'var(--text-secondary)'};background:${bg}">${d}</span>`;
+        }).join('')}
+      </div>
+      <button class="btn btn-secondary" style="font-size:0.8rem;padding:4px 12px;color:var(--red)" onclick="resetTraining()">🗑 Reset Training</button>
+    </div>`;
 }
 
 function changeTuning(tuning) {
@@ -1148,11 +2030,41 @@ function init() {
     if (state.showSettings) renderSettings();
     else renderControlPanel();
   });
+  renderStartScreen();
 }
 
 function updateShowNotesBtn() {
   const btn = document.getElementById('showNotesBtn');
   btn.style.display = state.gameStarted ? 'flex' : 'none';
+}
+
+// ===== MODE SELECTION SCREEN =====
+function renderStartScreen() {
+  const ss = document.getElementById('startScreen');
+  const hasProgress = state.trainingDay > 0 && state.trainingDay <= 7 && 
+    state.trainingCompletedDays && !state.trainingCompletedDays.includes(7);
+  
+  // Build training progress dots
+  let dotsHtml = '';
+  for (let d = 1; d <= 7; d++) {
+    let cls = 'progress-dot';
+    if (state.trainingCompletedDays && state.trainingCompletedDays.includes(d)) cls += ' complete';
+    if (d === state.trainingDay) cls += ' current';
+    dotsHtml += `<span class="${cls}"></span>`;
+  }
+  
+  ss.innerHTML = `
+    <h2>🎸 FretTrainer</h2>
+    <p>Learn the fretboard. Choose your mode.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px">
+      <button class="btn btn-primary" style="font-size:1.1rem;padding:12px 32px" onclick="startFreeform()">🎸 Freeform</button>
+      <button class="btn btn-primary" style="font-size:1.1rem;padding:12px 32px" onclick="startTraining()">🎓 Training Mode</button>
+    </div>
+    ${hasProgress ? `
+      <button class="btn btn-secondary" style="margin-top:8px;font-size:0.9rem" onclick="startTraining()">Continue Training (Day ${state.trainingDay})</button>
+    ` : ''}
+    <div class="progress-dots" style="margin-top:16px">${dotsHtml}</div>
+  `;
 }
 
 document.addEventListener('DOMContentLoaded', init);
