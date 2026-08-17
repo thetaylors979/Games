@@ -560,61 +560,17 @@ function playNote(noteName, octave=3) {
     if (noteIndex === -1) return;
     const semitonesFromA4 = (noteIndex - 9) + (octave - 4) * 12;
     const freq = 440 * Math.pow(2, semitonesFromA4 / 12);
-    if (audioCtx.state === 'suspended') audioCtx.resume();
     const now = audioCtx.currentTime;
-
-    // --- Guitar pluck via Karplus-Strong synthesis ---
-    // A short burst of filtered noise is fed into a feedback delay loop
-    // whose delay time equals one full wave period of the note's frequency.
-    // The lowpass filter in the loop (with a feedback gain just under 1)
-    // makes the sound decay naturally like a plucked string.
-    const period = 1 / freq;
-    const delayTime = Math.max(period, 0.001); // avoid zero
-
-    // Noise burst (a few periods long, slightly lowpassed) -> the 'pick'
-    const noiseLen = Math.max(0.004, Math.min(period * 6, 0.05));
-    const noiseSrc = audioCtx.createBufferSource();
-    const buffer = audioCtx.createBuffer(1, Math.max(1, Math.floor(noiseLen * audioCtx.sampleRate)), audioCtx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-    noiseSrc.buffer = buffer;
-
-    const noiseFilter = audioCtx.createBiquadFilter();
-    noiseFilter.type = 'lowpass';
-    noiseFilter.frequency.value = 2200;
-
-    // Feedback delay line (the 'string')
-    const delay = audioCtx.createDelay(1.0);
-    delay.delayTime.value = delayTime;
-    const loopFilter = audioCtx.createBiquadFilter();
-    loopFilter.type = 'lowpass';
-    loopFilter.frequency.value = Math.min(freq * 2.5, 5000);
-    const feedback = audioCtx.createGain();
-    feedback.gain.value = 0.985; // slightly under 1 -> natural decay
-
-    // Output level with a fast attack and long natural tail
-    const outGain = audioCtx.createGain();
-    outGain.gain.setValueAtTime(0, now);
-    outGain.gain.linearRampToValueAtTime(0.55, now + 0.006);
-    outGain.gain.exponentialRampToValueAtTime(0.001, now + 2.2);
-
-    // --- Patch it together ---
-    // noise -> noiseFilter -> delay; delay -> loopFilter -> feedback -> delay (loop)
-    //                                   delay -> outGain -> destination
-    noiseSrc.connect(noiseFilter);
-    noiseFilter.connect(delay);
-    delay.connect(loopFilter);
-    loopFilter.connect(feedback);
-    feedback.connect(delay);
-    delay.connect(outGain);
-    outGain.connect(audioCtx.destination);
-
-    noiseSrc.start(now);
-    noiseSrc.stop(now + 0.1);
-    // Stop the feedback loop after the tail has died out.
-    setTimeout(() => {
-      try { feedback.gain.setValueAtTime(0, audioCtx.currentTime); } catch(e) {}
-    }, 2400);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, now);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 1.5);
   } catch(e) {}
 }
 
