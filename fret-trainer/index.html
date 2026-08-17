@@ -549,8 +549,11 @@ function saveState() {
 
 // ===== AUDIO ENGINE (reused) =====
 let audioCtx = null;
+let audioUnlocked = false;
 function initAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  audioUnlocked = true;
 }
 function playNote(noteName, octave=3) {
   if (!state.audioEnabled) return;
@@ -2061,6 +2064,22 @@ function hideNotesOverlay() {
 // ===== INIT =====
 function init() {
   loadState();
+
+  // iOS Safari requires the AudioContext to be created/resumed inside a
+  // direct user-gesture handler (tap) or it stays muted. Unlock audio on the
+  // very first interaction so notes play on iPhone/iPad too.
+  const unlockAudio = () => {
+    try {
+      initAudio();
+    } catch(e) {}
+    document.removeEventListener('pointerdown', unlockAudio);
+    document.removeEventListener('touchend', unlockAudio);
+    document.removeEventListener('click', unlockAudio);
+  };
+  document.addEventListener('pointerdown', unlockAudio);
+  document.addEventListener('touchend', unlockAudio);
+  document.addEventListener('click', unlockAudio);
+
   if (state.darkMode) {
     document.documentElement.setAttribute('data-theme', 'dark');
     document.getElementById('btnDarkMode').textContent = '☀️';
