@@ -397,24 +397,51 @@ const DEFAULT_VEHICLES = [{"id":1782844644294,"name":"Bill's F-150","year":"2024
 const DEFAULT_SERVICES = [{"id":1782844777827,"vehicleId":1782844644294,"type":"Oil Change","date":"2025-01-04","odometer":9185,"cost":114,"shop":"Greatwood kwik kar","notes":"","types":["Oil Change","Air Filter"]},{"id":1782844979984,"vehicleId":1782844644294,"types":["Oil Change"],"date":"2025-07-05","odometer":17380,"cost":94,"shop":"Greatwood kwik kar","notes":""},{"id":1782845083344,"vehicleId":1782844644294,"types":["Oil Change"],"date":"2025-12-06","odometer":30000,"cost":106,"shop":"Greatwood kwik kar","notes":""},{"id":1782845140667,"vehicleId":1782844644294,"types":["Oil Change","Cabin Filter","Air Filter"],"date":"2026-01-17","odometer":37417,"cost":165,"shop":"Greatwood kwik kar","notes":"","engineHours":654}];
 const DEFAULT_REMINDERS = [];
 
-function load() {
+// API config — Mac mini backend
+const API_BASE = 'http://' + location.hostname + ':8892/api';
+
+async function load() {
+    // Try server first
+    try {
+        const resp = await fetch(API_BASE + '/data');
+        if (resp.ok) {
+            const data = await resp.json();
+            vehicles = data.vehicles || [];
+            services = data.services || [];
+            reminders = data.reminders || [];
+            // Cache to localStorage as backup
+            localStorage.setItem('cm-vehicles', JSON.stringify(vehicles));
+            localStorage.setItem('cm-services', JSON.stringify(services));
+            localStorage.setItem('cm-reminders', JSON.stringify(reminders));
+            renderAll();
+            return;
+        }
+    } catch(e) {
+        console.warn('Server unavailable, using localStorage cache', e);
+    }
+    // Fallback to localStorage cache
     try { vehicles = JSON.parse(localStorage.getItem('cm-vehicles') || '[]'); } catch(e) { vehicles = []; }
     try { services = JSON.parse(localStorage.getItem('cm-services') || '[]'); } catch(e) { services = []; }
     try { reminders = JSON.parse(localStorage.getItem('cm-reminders') || '[]'); } catch(e) { reminders = []; }
-    // Seed with default data if empty (shared across devices via Cloudflare deploy)
     if (vehicles.length === 0 && services.length === 0) {
         vehicles = DEFAULT_VEHICLES;
         services = DEFAULT_SERVICES;
         reminders = DEFAULT_REMINDERS;
-        saveAll();
     }
     renderAll();
 }
 
 function saveAll() {
+    // Always cache to localStorage
     localStorage.setItem('cm-vehicles', JSON.stringify(vehicles));
     localStorage.setItem('cm-services', JSON.stringify(services));
     localStorage.setItem('cm-reminders', JSON.stringify(reminders));
+    // Save to server (fire and forget — localStorage is the backup)
+    fetch(API_BASE + '/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vehicles, services, reminders })
+    }).catch(e => console.warn('Server save failed, cached to localStorage', e));
 }
 
 function exportData() {
