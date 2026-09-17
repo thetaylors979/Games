@@ -191,9 +191,9 @@
         .footer .summary { flex: 1; font-size: 0.75rem; color: var(--text-dim); }
         .btn-launcher {
             background: transparent; border: 1px solid var(--card-border);
-            color: var(--text-dim); padding: 8px 16px; border-radius: 10px;
-            font-size: 0.8rem; font-weight: 600; cursor: pointer;
-            text-decoration: none; display: inline-block;
+            color: var(--text-dim); padding: 10px 18px; border-radius: 12px;
+            font-size: 1.25rem; font-weight: 600; cursor: pointer;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
             transition: border-color 0.15s, color 0.15s;
         }
         .btn-launcher:active { border-color: var(--accent); color: var(--accent); }
@@ -225,9 +225,9 @@
     <div class="content" id="vehicleList"></div>
     <div class="footer">
         <span class="summary" id="listSummary"></span>
-        <button class="btn-launcher" id="exportBtn" style="border:none;background:transparent;cursor:pointer">📤</button>
-        <button class="btn-launcher" id="importBtn" style="border:none;background:transparent;cursor:pointer">📥</button>
-        <a class="btn-launcher" href="/">🏠 Launcher</a>
+        <button class="btn-launcher" id="exportBtn" style="border:1px solid var(--card-border);background:transparent;cursor:pointer" title="Export data">📤 Export</button>
+        <button class="btn-launcher" id="importBtn" style="border:1px solid var(--card-border);background:transparent;cursor:pointer" title="Import data">📥 Import</button>
+        <a class="btn-launcher" href="../">🏠 Launcher</a>
     </div>
 </div>
 
