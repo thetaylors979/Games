@@ -230,7 +230,7 @@
         <span class="summary" id="listSummary"></span>
         <button class="btn-launcher" id="exportBtn" style="border:1px solid var(--card-border);background:transparent;cursor:pointer" title="Export data">📤 Export</button>
         <button class="btn-launcher" id="importBtn" style="border:1px solid var(--card-border);background:transparent;cursor:pointer" title="Import data">📥 Import</button>
-        <a class="btn-launcher" href="/">🏠 Launcher</a>
+        <a class="btn-launcher" href="../">🏠 Launcher</a>
     </div>
 </div>
 
@@ -401,7 +401,9 @@ const DEFAULT_SERVICES = [{"id":1782844777827,"vehicleId":1782844644294,"type":"
 const DEFAULT_REMINDERS = [];
 
 // API config — Mac mini backend
-const API_BASE = 'http://' + location.hostname + ':8892/api';
+const API_BASE = location.hostname.includes('thetaylors979')
+    ? 'http://100.124.6.90:8892/api'  // Cloudflare -> Mac mini backend
+    : 'http://' + location.hostname + ':8892/api';   // Mac mini direct
 
 async function load() {
     // Try server first
