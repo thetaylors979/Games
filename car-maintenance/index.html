@@ -397,81 +397,24 @@ const DEFAULT_VEHICLES = [{"id":1782844644294,"name":"Bill's F-150","year":"2024
 const DEFAULT_SERVICES = [{"id":1782844777827,"vehicleId":1782844644294,"type":"Oil Change","date":"2025-01-04","odometer":9185,"cost":114,"shop":"Greatwood kwik kar","notes":"","types":["Oil Change","Air Filter"]},{"id":1782844979984,"vehicleId":1782844644294,"types":["Oil Change"],"date":"2025-07-05","odometer":17380,"cost":94,"shop":"Greatwood kwik kar","notes":""},{"id":1782845083344,"vehicleId":1782844644294,"types":["Oil Change"],"date":"2025-12-06","odometer":30000,"cost":106,"shop":"Greatwood kwik kar","notes":""},{"id":1782845140667,"vehicleId":1782844644294,"types":["Oil Change","Cabin Filter","Air Filter"],"date":"2026-01-17","odometer":37417,"cost":165,"shop":"Greatwood kwik kar","notes":"","engineHours":654}];
 const DEFAULT_REMINDERS = [];
 
-// API base URL — Mac mini backend
-const API_BASE = location.hostname.includes('thetaylors979')
-    ? 'https://games.thetaylors979.workers.dev/api'  // Cloudflare (won't have backend)
-    : 'http://' + location.hostname + ':8892/api';   // Mac mini
-
-let USE_API = !location.hostname.includes('thetaylors979');
-let isLoading = false;
-
-async function load() {
-    isLoading = true;
-    if (USE_API) {
-        try {
-            const resp = await fetch(API_BASE + '/data');
-            if (resp.ok) {
-                const data = await resp.json();
-                vehicles = data.vehicles || [];
-                services = data.services || [];
-                reminders = data.reminders || [];
-                // Auto-migration: if server is empty but localStorage has data, upload it
-                if (vehicles.length === 0 && services.length === 0) {
-                    let lv = [], ls = [], lr = [];
-                    try { lv = JSON.parse(localStorage.getItem('cm-vehicles') || '[]'); } catch(e) {}
-                    try { ls = JSON.parse(localStorage.getItem('cm-services') || '[]'); } catch(e) {}
-                    try { lr = JSON.parse(localStorage.getItem('cm-reminders') || '[]'); } catch(e) {}
-                    if (lv.length > 0 || ls.length > 0) {
-                        vehicles = lv; services = ls; reminders = lr;
-                        await saveAll(); // Upload to server
-                        console.log('Auto-migrated localStorage data to server');
-                    } else {
-                        // No data anywhere — seed with defaults
-                        vehicles = DEFAULT_VEHICLES;
-                        services = DEFAULT_SERVICES;
-                        reminders = DEFAULT_REMINDERS;
-                        await saveAll();
-                    }
-                }
-                isLoading = false;
-                renderAll();
-                return;
-            }
-        } catch(e) {
-            console.warn('API load failed, falling back to localStorage', e);
-        }
-    }
-    // Fallback to localStorage
+function load() {
     try { vehicles = JSON.parse(localStorage.getItem('cm-vehicles') || '[]'); } catch(e) { vehicles = []; }
     try { services = JSON.parse(localStorage.getItem('cm-services') || '[]'); } catch(e) { services = []; }
     try { reminders = JSON.parse(localStorage.getItem('cm-reminders') || '[]'); } catch(e) { reminders = []; }
+    // Seed with default data if empty (shared across devices via Cloudflare deploy)
     if (vehicles.length === 0 && services.length === 0) {
         vehicles = DEFAULT_VEHICLES;
         services = DEFAULT_SERVICES;
         reminders = DEFAULT_REMINDERS;
         saveAll();
     }
-    isLoading = false;
     renderAll();
 }
 
-async function saveAll() {
-    // Always save to localStorage as backup
+function saveAll() {
     localStorage.setItem('cm-vehicles', JSON.stringify(vehicles));
     localStorage.setItem('cm-services', JSON.stringify(services));
     localStorage.setItem('cm-reminders', JSON.stringify(reminders));
-    // Also save to server if using API
-    if (USE_API && !isLoading) {
-        try {
-            await fetch(API_BASE + '/data', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ vehicles, services, reminders })
-            });
-        } catch(e) {
-            console.warn('API save failed, data saved to localStorage only', e);
-        }
-    }
 }
 
 function exportData() {
