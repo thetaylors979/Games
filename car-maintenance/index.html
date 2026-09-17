@@ -416,7 +416,7 @@ async function load() {
             localStorage.setItem('cm-vehicles', JSON.stringify(vehicles));
             localStorage.setItem('cm-services', JSON.stringify(services));
             localStorage.setItem('cm-reminders', JSON.stringify(reminders));
-            renderAll();
+            renderVehicleList();
             return;
         }
     } catch(e) {
@@ -431,7 +431,7 @@ async function load() {
         services = DEFAULT_SERVICES;
         reminders = DEFAULT_REMINDERS;
     }
-    renderAll();
+    renderVehicleList();
 }
 
 function saveAll() {
